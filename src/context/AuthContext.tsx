@@ -152,6 +152,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       role,
       createdAt: new Date().toISOString(),
       createdBy: user.id,
+      ...(role === "student" && studentClass?.trim() ? { studentClass: studentClass.trim() } : {}),
+      ...(role === "student" && rollNo?.trim() ? { rollNo: rollNo.trim() } : {}),
     };
     persistUsers([...users, newUser]);
     auditLog({
