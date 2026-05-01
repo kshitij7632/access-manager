@@ -34,7 +34,13 @@ export const StudentImportDialog = ({ trigger }: { trigger?: React.ReactNode }) 
       toast.error("CSV must include 'name' and 'email' columns");
       return;
     }
-    const mapped = rows.map(r => ({ name: r.name, email: r.email, password: r.password || undefined }));
+    const mapped = rows.map(r => ({
+      name: r.name,
+      email: r.email,
+      password: r.password || undefined,
+      studentClass: r.class || r.studentClass || undefined,
+      rollNo: r.rollNo || r.roll || undefined,
+    }));
     const res = bulkCreateStudents(mapped);
     setResult({ created: res.created.length, errors: res.errors });
     if (res.created.length) {
