@@ -63,13 +63,17 @@ const Users = () => {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    const res = adminCreateUser({ name, email, password, role });
+    const res = adminCreateUser({
+      name, email, password, role,
+      ...(role === "student" ? { studentClass, rollNo } : {}),
+    });
     if (!res.ok) {
       toast.error(res.error ?? "Could not create user");
       return;
     }
     toast.success("User created", { description: `${res.user?.name} · ID ${res.user?.id}` });
-    setName(""); setEmail(""); setPassword(""); setRole(allowedRoles[0] ?? "student");
+    setName(""); setEmail(""); setPassword(""); setStudentClass(""); setRollNo("");
+    setRole(allowedRoles[0] ?? "student");
     setOpen(false);
   };
 
