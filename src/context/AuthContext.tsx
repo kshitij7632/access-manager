@@ -133,26 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     sessionStorage.removeItem(SESSION_KEY);
   };
 
-  // Public signup is STUDENT-only. After registration, the user must sign in manually.
-  const registerStudent: AuthValue["registerStudent"] = ({ name, email, password }) => {
-    if (!name.trim() || !email.trim() || !password) return { ok: false, error: "All fields are required" };
-    if (password.length < 6) return { ok: false, error: "Password must be at least 6 characters" };
-    if (users.some(u => u.email.toLowerCase() === email.toLowerCase()))
-      return { ok: false, error: "Email already registered" };
-    const newUser: AppUser = {
-      id: generateId("student", users),
-      name: name.trim(),
-      email: email.trim(),
-      password,
-      role: "student",
-      createdAt: new Date().toISOString(),
-    };
-    persistUsers([...users, newUser]);
-    // Do NOT auto-login. User must sign in afterward.
-    return { ok: true, user: stripPw(newUser) };
-  };
-
-  const adminCreateUser: AuthValue["adminCreateUser"] = ({ name, email, password, role }) => {
+  const adminCreateUser: AuthValue["adminCreateUser"] = ({ name, email, password, role, studentClass, rollNo }) => {
     if (!user) return { ok: false, error: "Not authenticated" };
     // Staff can only create students
     if (user.role === "staff" && role !== "student") {
