@@ -33,15 +33,14 @@ type AuthValue = {
   resetTickets: ResetTicket[];
   login: (email: string, password: string) => { ok: boolean; error?: string; mustReset?: boolean };
   logout: () => void;
-  registerStudent: (input: { name: string; email: string; password: string }) => { ok: boolean; error?: string; user?: AuthUser };
-  adminCreateUser: (input: { name: string; email: string; password: string; role: Role }) => { ok: boolean; error?: string; user?: AuthUser };
+  adminCreateUser: (input: { name: string; email: string; password: string; role: Role; studentClass?: string; rollNo?: string }) => { ok: boolean; error?: string; user?: AuthUser };
   deleteUser: (id: string) => { ok: boolean; error?: string };
   updateUserRole: (id: string, role: Role) => { ok: boolean; error?: string };
   requestPasswordReset: (email: string) => { ok: boolean; error?: string; tempPassword?: string };
   resetPasswordWithTemp: (email: string, tempPassword: string, newPassword: string) => { ok: boolean; error?: string };
   updateProfile: (input: { name?: string; email?: string }) => { ok: boolean; error?: string };
   changePassword: (current: string, next: string) => { ok: boolean; error?: string };
-  bulkCreateStudents: (rows: { name: string; email: string; password?: string }[]) => { created: AuthUser[]; errors: { row: number; email?: string; error: string }[] };
+  bulkCreateStudents: (rows: { name: string; email: string; password?: string; studentClass?: string; rollNo?: string }[]) => { created: AuthUser[]; errors: { row: number; email?: string; error: string }[] };
 };
 
 const SESSION_KEY = "scorebuzz.session";
