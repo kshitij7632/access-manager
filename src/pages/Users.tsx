@@ -185,7 +185,16 @@ const Users = () => {
                 <TableRow key={u.id}>
                   <TableCell className="font-mono text-xs">{u.id}</TableCell>
                   <TableCell className="font-medium">
-                    {u.name} {isSelf && <span className="text-[10px] text-accent ml-1">(you)</span>}
+                    <div>
+                      {u.name} {isSelf && <span className="text-[10px] text-accent ml-1">(you)</span>}
+                    </div>
+                    {u.role === "student" && (u.studentClass || u.rollNo) && (
+                      <div className="text-[11px] text-muted-foreground font-normal mt-0.5">
+                        {u.studentClass && <span>Class {u.studentClass}</span>}
+                        {u.studentClass && u.rollNo && <span> · </span>}
+                        {u.rollNo && <span>Roll #{u.rollNo}</span>}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{u.email}</TableCell>
                   <TableCell>
