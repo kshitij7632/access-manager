@@ -35,6 +35,8 @@ const Users = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [studentClass, setStudentClass] = useState("");
+  const [rollNo, setRollNo] = useState("");
   const [role, setRole] = useState<Role>(allowedRoles[0] ?? "student");
   const [filter, setFilter] = useState<Role | "all">("all");
 
