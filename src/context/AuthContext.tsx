@@ -13,6 +13,9 @@ export type AppUser = {
   createdAt: string;
   createdBy?: string;
   mustResetPassword?: boolean;
+  // Student-only fields
+  studentClass?: string;
+  rollNo?: string;
 };
 
 export type AuthUser = Omit<AppUser, "password">;
