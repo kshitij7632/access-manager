@@ -7,10 +7,10 @@ import { Upload, FileText, Download, AlertCircle, CheckCircle2 } from "lucide-re
 import { toast } from "sonner";
 import { parseCSVWithHeader, downloadCSV } from "@/lib/csv";
 
-const SAMPLE = `name,email,password
-Aarav Kumar,aarav.k@scorebuzz.app,welcome123
-Priya Singh,priya.s@scorebuzz.app,welcome123
-Rohit Mehta,rohit.m@scorebuzz.app,`;
+const SAMPLE = `name,email,password,class,rollNo
+Aarav Kumar,aarav.k@scorebuzz.app,welcome123,10-A,12
+Priya Singh,priya.s@scorebuzz.app,welcome123,10-A,13
+Rohit Mehta,rohit.m@scorebuzz.app,,10-B,5`;
 
 export const StudentImportDialog = ({ trigger }: { trigger?: React.ReactNode }) => {
   const { bulkCreateStudents } = useAuth();
