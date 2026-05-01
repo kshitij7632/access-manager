@@ -315,6 +315,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         createdAt: new Date().toISOString(),
         createdBy: user.id,
         mustResetPassword: true,
+        ...(r.studentClass?.trim() ? { studentClass: r.studentClass.trim() } : {}),
+        ...(r.rollNo?.trim() ? { rollNo: r.rollNo.trim() } : {}),
       };
       working = [...working, newUser];
       created.push(stripPw(newUser));
