@@ -124,6 +124,18 @@ const Users = () => {
                   <p className="text-[11px] text-muted-foreground mt-1">Staff can only create student accounts.</p>
                 )}
               </div>
+              {role === "student" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="cu-class">Class / Section</Label>
+                    <Input id="cu-class" value={studentClass} onChange={e => setStudentClass(e.target.value)} placeholder="e.g. 10-A" maxLength={30} />
+                  </div>
+                  <div>
+                    <Label htmlFor="cu-roll">Roll no.</Label>
+                    <Input id="cu-roll" value={rollNo} onChange={e => setRollNo(e.target.value)} placeholder="e.g. 23" maxLength={20} />
+                  </div>
+                </div>
+              )}
               <DialogFooter>
                 <Button type="submit" className="bg-gradient-gold text-accent-foreground font-bold">Create account</Button>
               </DialogFooter>
