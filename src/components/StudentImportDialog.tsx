@@ -65,7 +65,7 @@ export const StudentImportDialog = ({ trigger }: { trigger?: React.ReactNode }) 
         <div className="space-y-4">
           <div className="rounded-xl bg-muted/40 border border-border p-3 text-xs text-muted-foreground space-y-1">
             <div className="flex items-center gap-2 text-foreground font-bold">
-              <FileText className="size-3.5" /> Required columns: <code className="font-mono">name, email</code> · Optional: <code className="font-mono">password</code>
+              <FileText className="size-3.5" /> Required: <code className="font-mono">name, email</code> · Optional: <code className="font-mono">password, class, rollNo</code>
             </div>
             <div>If password is blank, <code className="font-mono">student123</code> is set and the user must reset on first login.</div>
           </div>
