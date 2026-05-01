@@ -337,7 +337,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user, users, resetTickets,
         login, logout,
-        registerStudent, adminCreateUser, deleteUser, updateUserRole,
+        adminCreateUser, deleteUser, updateUserRole,
         requestPasswordReset, resetPasswordWithTemp,
         updateProfile, changePassword, bulkCreateStudents,
       }}
