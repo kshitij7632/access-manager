@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Leaderboard from "./pages/Leaderboard";
 import Exams from "./pages/Exams";
 import Teams from "./pages/Teams";
+import TeamBuilder from "./pages/TeamBuilder";
 import Students from "./pages/Students";
 import Users from "./pages/Users";
 import Login from "./pages/Login";
@@ -53,6 +54,14 @@ const App = () => (
                       }
                     />
                     <Route path="/teams" element={<Teams />} />
+                    <Route
+                      path="/teams/builder"
+                      element={
+                        <RequireAuth roles={["staff", "super_admin"]}>
+                          <TeamBuilder />
+                        </RequireAuth>
+                      }
+                    />
                     <Route
                       path="/students"
                       element={
