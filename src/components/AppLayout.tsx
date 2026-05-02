@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Trophy, FileText, Users, GraduationCap, Zap, Upload, LogOut, ShieldCheck, UserCircle, ScrollText } from "lucide-react";
+import { LayoutDashboard, Trophy, FileText, Users, GraduationCap, Zap, Upload, LogOut, ShieldCheck, UserCircle, ScrollText, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth, Role } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ const baseNav: NavItem[] = [
   { to: "/exams",   label: "Exams",   icon: FileText, roles: ["student", "staff", "super_admin"] },
   { to: "/upload",  label: "Upload Marks", icon: Upload, roles: ["staff", "super_admin"] },
   { to: "/teams",   label: "Teams",   icon: Users, roles: ["student", "staff", "super_admin"] },
+  { to: "/teams/builder", label: "Team Builder", icon: Sparkles, roles: ["staff", "super_admin"] },
   { to: "/students",label: "Students",icon: GraduationCap, roles: ["staff", "super_admin"] },
   { to: "/users",   label: "Users",   icon: ShieldCheck, roles: ["staff", "super_admin"] },
   { to: "/audit",   label: "Audit Log", icon: ScrollText, roles: ["super_admin"] },
