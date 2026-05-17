@@ -1,11 +1,12 @@
+import { useMemo } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCard } from "@/components/StatCard";
 import { LiveTicker } from "@/components/LiveTicker";
 import { MyScoresPanel } from "@/components/MyScoresPanel";
-import { students, latestExamId } from "@/data/mock";
+import { students, latestExamId, getStudent } from "@/data/mock";
 import { useAppState } from "@/context/AppStateContext";
 import { useAuth } from "@/context/AuthContext";
-import { Users, Trophy, FileText, Sparkles, Crown, Flame, ArrowUpRight, Upload } from "lucide-react";
+import { Users, Trophy, FileText, Sparkles, Crown, Flame, ArrowUpRight, Upload, TrendingUp, Rocket, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -13,12 +14,38 @@ const Dashboard = () => {
   const { exams, individualLeaderboard, teamLeaderboard } = useAppState();
   const { user } = useAuth();
   const canEdit = user?.role === "staff" || user?.role === "super_admin";
-  const latestExam = exams.find(e => e.id === latestExamId) ?? exams[exams.length - 1];
+
+  const sortedExams = useMemo(
+    () => [...exams].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    [exams]
+  );
+  const latestExam = exams.find(e => e.id === latestExamId) ?? sortedExams[sortedExams.length - 1];
+  const latestIdx = sortedExams.findIndex(e => e.id === latestExam.id);
+  const prevExam = latestIdx > 0 ? sortedExams[latestIdx - 1] : null;
+
   const tlb = teamLeaderboard(latestExam.id);
   const ilb = individualLeaderboard(latestExam.id);
+  const prevTlb = prevExam ? teamLeaderboard(prevExam.id) : null;
   const winner = tlb[0];
   const topper = ilb[0];
   const podium = tlb.slice(0, 3);
+
+  // Momentum: biggest climber by rank vs previous exam
+  const movements = tlb.map(t => {
+    const prev = prevTlb?.find(p => p.team.id === t.team.id);
+    return {
+      team: t.team,
+      rankDelta: prev ? prev.rank - t.rank : 0,
+      avgDelta: prev ? t.avg - prev.avg : 0,
+      avg: t.avg,
+    };
+  });
+  const climber = [...movements].sort((a, b) => b.rankDelta - a.rankDelta || b.avgDelta - a.avgDelta)[0];
+  const mostImproved = [...movements].sort((a, b) => b.avgDelta - a.avgDelta)[0];
+
+  // Captain performance: rank of the winning team's captain in individual board
+  const captainStudent = getStudent(winner.team.captainId);
+  const captainRow = ilb.find(r => r.student.id === captainStudent.id);
 
   return (
     <div>
@@ -97,19 +124,107 @@ const Dashboard = () => {
           </div>
         </section>
 
-        {/* Hybrid insights */}
-        <section className="mt-10 grid md:grid-cols-3 gap-4">
-          {[
-            { title: "Topper belongs to", value: topper.team.name, hint: "Captaining today's race" },
-            { title: `Top 10 from ${winner.team.name}`, value: `${ilb.slice(0, 10).filter(r => r.team.id === winner.team.id).length} students`, hint: "Domination in numbers" },
-            { title: "Exam attempted by", value: `${students.length} students`, hint: `${latestExam.subject} · ${new Date(latestExam.date).toDateString()}` },
-          ].map((it) => (
-            <div key={it.title} className="rounded-2xl border border-border bg-gradient-card p-6">
-              <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground font-semibold">{it.title}</div>
-              <div className="font-display text-3xl mt-3 text-accent">{it.value}</div>
-              <div className="text-sm text-muted-foreground mt-1">{it.hint}</div>
+        {/* Engagement: momentum & captain & winner */}
+        <section className="mt-10 grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Team Momentum / Biggest climber */}
+          <div className="group rounded-2xl border border-primary/30 bg-gradient-card p-6 relative overflow-hidden transition-smooth hover:-translate-y-0.5 hover:shadow-elegant">
+            <div
+              aria-hidden
+              className="absolute -top-10 -right-10 size-32 rounded-full blur-3xl opacity-50"
+              style={{ background: `hsl(${climber.team.color} / 0.45)` }}
+            />
+            <div className="relative">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-primary-glow font-bold">
+                <Rocket className="size-3" /> Team Momentum
+              </div>
+              <div className="font-display text-3xl mt-3" style={{ color: `hsl(${climber.team.color})` }}>
+                {climber.team.name}
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                {climber.rankDelta > 0
+                  ? `Climbed ${climber.rankDelta} position${climber.rankDelta > 1 ? "s" : ""} this exam`
+                  : climber.rankDelta < 0
+                  ? `Slipped ${Math.abs(climber.rankDelta)} position${Math.abs(climber.rankDelta) > 1 ? "s" : ""}`
+                  : "Holding the line"}
+              </div>
+              {climber.rankDelta > 0 && (
+                <div className="mt-3 inline-flex items-center gap-1 text-success text-xs font-bold">
+                  <TrendingUp className="size-3" /> +{climber.rankDelta}
+                </div>
+              )}
             </div>
-          ))}
+          </div>
+
+          {/* Most Improved Team (avg delta) */}
+          <div className="rounded-2xl border border-border bg-gradient-card p-6 transition-smooth hover:-translate-y-0.5">
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-accent font-bold">
+              <Zap className="size-3" /> Most Improved
+            </div>
+            <div className="font-display text-3xl mt-3 text-foreground">{mostImproved.team.name}</div>
+            <div className="text-sm text-muted-foreground mt-1">
+              {mostImproved.avgDelta >= 0 ? "+" : ""}
+              {mostImproved.avgDelta.toFixed(1)} pts vs last exam
+            </div>
+            <div className="mt-3 h-1.5 rounded-full bg-secondary overflow-hidden">
+              <div
+                className="h-full bg-gradient-gold"
+                style={{ width: `${Math.min(100, Math.max(0, 50 + mostImproved.avgDelta * 4))}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Captain Performance */}
+          <div className="rounded-2xl border border-accent/30 bg-gradient-card p-6 transition-smooth hover:-translate-y-0.5">
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-accent font-bold">
+              <Crown className="size-3" /> Captain Watch
+            </div>
+            <div className="font-display text-2xl mt-3 text-foreground truncate">{captainStudent.name}</div>
+            <div className="text-xs text-muted-foreground">{winner.team.name} · Captain</div>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="font-mono-stat text-3xl text-accent">{captainRow?.marks ?? 0}</span>
+              <span className="text-xs text-muted-foreground">/ {latestExam.totalMarks}</span>
+              <span className="ml-auto text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                #{captainRow?.rank ?? "—"}
+              </span>
+            </div>
+          </div>
+
+          {/* Weekly Winner */}
+          <div className="rounded-2xl border border-accent/40 bg-gradient-gold/10 p-6 transition-smooth hover:-translate-y-0.5 relative overflow-hidden">
+            <div aria-hidden className="absolute -bottom-12 -right-12 size-32 rounded-full bg-accent/25 blur-3xl" />
+            <div className="relative">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-accent font-bold">
+                <Trophy className="size-3" /> Weekly Winner
+              </div>
+              <div className="font-display text-3xl mt-3 text-foreground">{winner.team.name}</div>
+              <div className="text-sm text-muted-foreground mt-1">
+                {ilb.slice(0, 10).filter(r => r.team.id === winner.team.id).length} in top 10 · avg{" "}
+                <span className="text-accent font-mono-stat">{winner.avg.toFixed(1)}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Quick context strip */}
+        <section className="mt-6 rounded-2xl border border-border bg-gradient-card p-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <Sparkles className="size-4 text-accent" />
+            <span className="text-muted-foreground">Topper belongs to</span>
+            <span className="font-bold">{topper.team.name}</span>
+          </div>
+          <div className="hidden md:block w-px h-4 bg-border" />
+          <div className="flex items-center gap-2">
+            <Users className="size-4 text-primary-glow" />
+            <span className="text-muted-foreground">Attempted by</span>
+            <span className="font-bold">{students.length} students</span>
+          </div>
+          <div className="hidden md:block w-px h-4 bg-border" />
+          <div className="flex items-center gap-2">
+            <FileText className="size-4 text-muted-foreground" />
+            <span className="text-muted-foreground">
+              {latestExam.subject} · {new Date(latestExam.date).toDateString()}
+            </span>
+          </div>
         </section>
 
         {user?.role === "student" && <MyScoresPanel />}
