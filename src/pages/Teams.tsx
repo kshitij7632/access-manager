@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/PageHeader";
-import { students, getStudent, latestExamId } from "@/data/mock";
+import { getStudent, latestExamId } from "@/data/mock";
 import { useAppState } from "@/context/AppStateContext";
 import { Button } from "@/components/ui/button";
 import { Plus, Crown, Flame, TrendingUp, TrendingDown, Minus, Trophy, Target, Sparkles } from "lucide-react";
@@ -52,16 +52,8 @@ const Teams = () => {
           const gapToLeader = leaderAvg - row.avg;
           const onFire = movement >= 2 || (row.rank === 1 && delta >= 0);
 
-          // Member contribution (share of team total)
-          const memberTotals = members.map(m => {
-            const top = row.topPerformer?.m.id === m.id ? row.topPerformer.marks : 0;
-            // recompute via tlb: derive from same exam set – fallback to 0
-            return { m, score: top };
-          });
-          const teamTotal = members.length * row.avg;
-          const captainScore = row.members.find(x => x.id === captain.id)
-            ? (row.topPerformer?.m.id === captain.id ? row.topPerformer.marks : Math.round(row.avg))
-            : Math.round(row.avg);
+          const captainScore =
+            row.topPerformer?.m.id === captain.id ? row.topPerformer.marks : Math.round(row.avg);
 
           return (
             <div
