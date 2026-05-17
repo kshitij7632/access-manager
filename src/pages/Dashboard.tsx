@@ -1,11 +1,12 @@
+import { useMemo } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCard } from "@/components/StatCard";
 import { LiveTicker } from "@/components/LiveTicker";
 import { MyScoresPanel } from "@/components/MyScoresPanel";
-import { students, latestExamId } from "@/data/mock";
+import { students, latestExamId, getStudent } from "@/data/mock";
 import { useAppState } from "@/context/AppStateContext";
 import { useAuth } from "@/context/AuthContext";
-import { Users, Trophy, FileText, Sparkles, Crown, Flame, ArrowUpRight, Upload } from "lucide-react";
+import { Users, Trophy, FileText, Sparkles, Crown, Flame, ArrowUpRight, Upload, TrendingUp, Rocket, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -13,12 +14,38 @@ const Dashboard = () => {
   const { exams, individualLeaderboard, teamLeaderboard } = useAppState();
   const { user } = useAuth();
   const canEdit = user?.role === "staff" || user?.role === "super_admin";
-  const latestExam = exams.find(e => e.id === latestExamId) ?? exams[exams.length - 1];
+
+  const sortedExams = useMemo(
+    () => [...exams].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    [exams]
+  );
+  const latestExam = exams.find(e => e.id === latestExamId) ?? sortedExams[sortedExams.length - 1];
+  const latestIdx = sortedExams.findIndex(e => e.id === latestExam.id);
+  const prevExam = latestIdx > 0 ? sortedExams[latestIdx - 1] : null;
+
   const tlb = teamLeaderboard(latestExam.id);
   const ilb = individualLeaderboard(latestExam.id);
+  const prevTlb = prevExam ? teamLeaderboard(prevExam.id) : null;
   const winner = tlb[0];
   const topper = ilb[0];
   const podium = tlb.slice(0, 3);
+
+  // Momentum: biggest climber by rank vs previous exam
+  const movements = tlb.map(t => {
+    const prev = prevTlb?.find(p => p.team.id === t.team.id);
+    return {
+      team: t.team,
+      rankDelta: prev ? prev.rank - t.rank : 0,
+      avgDelta: prev ? t.avg - prev.avg : 0,
+      avg: t.avg,
+    };
+  });
+  const climber = [...movements].sort((a, b) => b.rankDelta - a.rankDelta || b.avgDelta - a.avgDelta)[0];
+  const mostImproved = [...movements].sort((a, b) => b.avgDelta - a.avgDelta)[0];
+
+  // Captain performance: rank of the winning team's captain in individual board
+  const captainStudent = getStudent(winner.team.captainId);
+  const captainRow = ilb.find(r => r.student.id === captainStudent.id);
 
   return (
     <div>
