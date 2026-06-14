@@ -12,15 +12,15 @@ const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [issued, setIssued] = useState<{ email: string; tempPassword: string } | null>(null);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = requestPasswordReset(email.trim());
+    const res = await requestPasswordReset(email.trim());
     if (!res.ok) {
-      toast.error(res.error ?? "Could not issue reset");
+      toast.error(res.error ?? "Could not send reset email");
       return;
     }
-    setIssued({ email: email.trim(), tempPassword: res.tempPassword! });
-    toast.success("Temporary password issued");
+    setIssued({ email: email.trim(), tempPassword: "Check your inbox" });
+    toast.success("Reset email sent", { description: "Check your inbox for the link." });
   };
 
   const copy = () => {
