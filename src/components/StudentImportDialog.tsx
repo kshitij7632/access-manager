@@ -27,7 +27,7 @@ export const StudentImportDialog = ({ trigger }: { trigger?: React.ReactNode }) 
     reader.readAsText(file);
   };
 
-  const handleImport = () => {
+  const handleImport = async () => {
     if (!text.trim()) { toast.error("Paste or upload a CSV first"); return; }
     const { headers, rows } = parseCSVWithHeader(text);
     if (!headers.includes("name") || !headers.includes("email")) {
@@ -41,7 +41,7 @@ export const StudentImportDialog = ({ trigger }: { trigger?: React.ReactNode }) 
       studentClass: r.class || r.studentClass || undefined,
       rollNo: r.rollNo || r.roll || undefined,
     }));
-    const res = bulkCreateStudents(mapped);
+    const res = await bulkCreateStudents(mapped);
     setResult({ created: res.created.length, errors: res.errors });
     if (res.created.length) {
       toast.success(`Created ${res.created.length} student${res.created.length === 1 ? "" : "s"}`);
