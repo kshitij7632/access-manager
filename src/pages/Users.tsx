@@ -61,9 +61,9 @@ const Users = () => {
 
   const filterChips: (Role | "all")[] = isStaff ? ["all", "student"] : ["all", "super_admin", "staff", "student"];
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = adminCreateUser({
+    const res = await adminCreateUser({
       name, email, password, role,
       ...(role === "student" ? { studentClass, rollNo } : {}),
     });
@@ -207,8 +207,8 @@ const Users = () => {
                       {isAdmin && (
                         <Select
                           value={u.role}
-                          onValueChange={(v) => {
-                            const res = updateUserRole(u.id, v as Role);
+                          onValueChange={async (v) => {
+                            const res = await updateUserRole(u.id, v as Role);
                             if (!res.ok) toast.error(res.error ?? "Failed");
                             else toast.success(`Role updated to ${roleMeta[v as Role].label}`);
                           }}
@@ -239,8 +239,8 @@ const Users = () => {
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              onClick={() => {
-                                const res = deleteUser(u.id);
+                              onClick={async () => {
+                                const res = await deleteUser(u.id);
                                 if (!res.ok) toast.error(res.error ?? "Failed");
                                 else toast.success("User deleted");
                               }}

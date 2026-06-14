@@ -16,15 +16,15 @@ const Login = () => {
 
   if (user) return <Navigate to="/" replace />;
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = login(siEmail.trim(), siPassword);
+    const res = await login(siEmail.trim(), siPassword);
     if (!res.ok) {
       toast.error(res.error ?? "Sign in failed");
       return;
     }
     if (res.mustReset) {
-      toast.warning("Please set a new password", { description: "You signed in with a temporary password." });
+      toast.warning("Please set a new password");
       navigate(`/reset-password?email=${encodeURIComponent(siEmail.trim())}`);
       return;
     }

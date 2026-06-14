@@ -31,20 +31,20 @@ const Profile = () => {
   const meta = roleMeta[user.role];
   const Icon = meta.icon;
 
-  const handleProfile = (e: React.FormEvent) => {
+  const handleProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingProfile(true);
-    const res = updateProfile({ name, email });
+    const res = await updateProfile({ name, email });
     setSavingProfile(false);
     if (!res.ok) { toast.error(res.error ?? "Could not save"); return; }
     toast.success("Profile updated");
   };
 
-  const handlePassword = (e: React.FormEvent) => {
+  const handlePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (next !== confirm) { toast.error("Passwords don't match"); return; }
     setSavingPw(true);
-    const res = changePassword(current, next);
+    const res = await changePassword(current, next);
     setSavingPw(false);
     if (!res.ok) { toast.error(res.error ?? "Could not change password"); return; }
     setCurrent(""); setNext(""); setConfirm("");

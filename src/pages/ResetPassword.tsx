@@ -17,18 +17,18 @@ const ResetPassword = () => {
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (next !== confirm) {
       toast.error("Passwords don't match");
       return;
     }
-    const res = resetPasswordWithTemp(email.trim(), temp, next);
+    const res = await resetPasswordWithTemp(email.trim(), temp, next);
     if (!res.ok) {
       toast.error(res.error ?? "Reset failed");
       return;
     }
-    logout();
+    await logout();
     toast.success("Password updated", { description: "Sign in with your new password." });
     navigate("/login");
   };
