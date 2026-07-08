@@ -3,7 +3,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatCard } from "@/components/StatCard";
 import { LiveTicker } from "@/components/LiveTicker";
 import { MyScoresPanel } from "@/components/MyScoresPanel";
-import { students, latestExamId, getStudent } from "@/data/mock";
 import { useAppState } from "@/context/AppStateContext";
 import { useAuth } from "@/context/AuthContext";
 import { Users, Trophy, FileText, Sparkles, Crown, Flame, ArrowUpRight, Upload, TrendingUp, Rocket, Zap } from "lucide-react";
@@ -11,7 +10,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 const Dashboard = () => {
-  const { exams, individualLeaderboard, teamLeaderboard } = useAppState();
+  const { exams, students, individualLeaderboard, teamLeaderboard, getStudent, latestExamId } = useAppState();
   const { user } = useAuth();
   const canEdit = user?.role === "staff" || user?.role === "super_admin";
 
@@ -20,6 +19,16 @@ const Dashboard = () => {
     [exams]
   );
   const latestExam = exams.find(e => e.id === latestExamId) ?? sortedExams[sortedExams.length - 1];
+  if (!latestExam) {
+    return (
+      <div>
+        <LiveTicker />
+        <div className="px-4 md:px-10 py-12 text-center text-muted-foreground">
+          Welcome. No exams yet — create one from the Exams page to see leaderboards.
+        </div>
+      </div>
+    );
+  }
   const latestIdx = sortedExams.findIndex(e => e.id === latestExam.id);
   const prevExam = latestIdx > 0 ? sortedExams[latestIdx - 1] : null;
 
@@ -29,6 +38,17 @@ const Dashboard = () => {
   const winner = tlb[0];
   const topper = ilb[0];
   const podium = tlb.slice(0, 3);
+
+  if (!winner || !topper) {
+    return (
+      <div>
+        <LiveTicker />
+        <div className="px-4 md:px-10 py-12 text-center text-muted-foreground">
+          {latestExam.name} · Awaiting marks. Upload results to light up the arena.
+        </div>
+      </div>
+    );
+  }
 
   // Momentum: biggest climber by rank vs previous exam
   const movements = tlb.map(t => {

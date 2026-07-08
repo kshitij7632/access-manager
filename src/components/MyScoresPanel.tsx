@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useAppState } from "@/context/AppStateContext";
-import { students, getTeam } from "@/data/mock";
+
 import { TrendingUp, Trophy, Target, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,16 +13,17 @@ import { Button } from "@/components/ui/button";
  */
 export const MyScoresPanel = () => {
   const { user } = useAuth();
-  const { exams, marks, individualLeaderboard } = useAppState();
+  const { exams, marks, students, individualLeaderboard, getTeam } = useAppState();
 
   const me = useMemo(() => {
-    if (!user) return null;
-    // Try exact email/name match against seed roster, else pick a deterministic demo slot
+    if (!user || students.length === 0) return null;
+    const byId = students.find(s => s.id === user.id);
+    if (byId) return byId;
     const byName = students.find(s => s.name.toLowerCase() === user.name.toLowerCase());
     if (byName) return byName;
     const idx = Math.abs(hash(user.id)) % students.length;
     return students[idx];
-  }, [user]);
+  }, [user, students]);
 
   if (!user || !me) return null;
   const team = getTeam(me.teamId);

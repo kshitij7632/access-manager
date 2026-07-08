@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { students, getTeam, studentOverall, individualLeaderboard, latestExamId } from "@/data/mock";
+import { useAppState } from "@/context/AppStateContext";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 
 const Students = () => {
+  const { students, getTeam, studentOverall, individualLeaderboard, latestExamId } = useAppState();
   const [q, setQ] = useState("");
-  const ilb = individualLeaderboard(latestExamId);
+  const ilb = latestExamId ? individualLeaderboard(latestExamId) : [];
   const rankFor = (id: string) => ilb.find(r => r.student.id === id)?.rank ?? 0;
 
   const filtered = students.filter(s =>

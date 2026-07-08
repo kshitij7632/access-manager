@@ -1,5 +1,4 @@
 import { PageHeader } from "@/components/PageHeader";
-import { getStudent, latestExamId } from "@/data/mock";
 import { useAppState } from "@/context/AppStateContext";
 import { Button } from "@/components/ui/button";
 import { Plus, Crown, Flame, TrendingUp, TrendingDown, Minus, Trophy, Target, Sparkles } from "lucide-react";
@@ -8,9 +7,8 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 const Teams = () => {
-  const { exams, teamLeaderboard } = useAppState();
+  const { exams, teamLeaderboard, getStudent, latestExamId } = useAppState();
 
-  // Sort exams chronologically for momentum comparison
   const sortedExams = useMemo(
     () => [...exams].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
     [exams]
@@ -19,7 +17,7 @@ const Teams = () => {
   const currentExam = sortedExams[latestIdx] ?? sortedExams[sortedExams.length - 1];
   const prevExam = sortedExams[latestIdx - 1];
 
-  const tlb = teamLeaderboard(currentExam.id);
+  const tlb = currentExam ? teamLeaderboard(currentExam.id) : [];
   const prevTlb = prevExam ? teamLeaderboard(prevExam.id) : null;
   const leaderAvg = tlb[0]?.avg ?? 0;
 

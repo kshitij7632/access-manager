@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { useAppState } from "@/context/AppStateContext";
-import { students, getTeam } from "@/data/mock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +16,7 @@ import { parseCSVWithHeader, downloadCSV } from "@/lib/csv";
 import { useRef } from "react";
 
 const MarksUpload = () => {
-  const { exams, marks, upsertMarks } = useAppState();
+  const { exams, marks, students, getTeam, upsertMarks } = useAppState();
   const [searchParams] = useSearchParams();
   const initialExam = searchParams.get("exam") || exams[exams.length - 1]?.id || "";
   const [examId, setExamId] = useState<string>(initialExam);
@@ -121,7 +120,7 @@ const MarksUpload = () => {
     setPasteText("");
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedExam) return;
     const total = selectedExam.totalMarks;
     const entries = rows
@@ -131,7 +130,7 @@ const MarksUpload = () => {
       toast.error("Enter at least one mark");
       return;
     }
-    upsertMarks(selectedExam.id, entries);
+    await upsertMarks(selectedExam.id, entries);
     toast.success(`Saved marks for ${entries.length} students`, { description: `${selectedExam.name} processed` });
     setShowResults(true);
   };
