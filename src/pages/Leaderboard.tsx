@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
-import { latestExamId } from "@/data/mock";
 import { useAppState } from "@/context/AppStateContext";
 import { WinnerPanel } from "@/components/WinnerPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,21 +36,29 @@ const Movement = ({ delta }: { delta: number | undefined }) => {
 };
 
 const Leaderboard = () => {
-  const { exams, individualLeaderboard, teamLeaderboard } = useAppState();
-  const [examId, setExamId] = useState(exams.find(e => e.id === latestExamId)?.id ?? exams[0].id);
+  const { exams, latestExamId, individualLeaderboard, teamLeaderboard } = useAppState();
+  const [examId, setExamId] = useState<string>("");
+  if (exams.length === 0) {
+    return (
+      <div className="px-4 md:px-10 py-12 text-center text-muted-foreground">
+        No exams yet. Create one from the Exams page.
+      </div>
+    );
+  }
+  const activeExamId = examId || latestExamId || exams[0].id;
 
   const sortedExams = useMemo(
     () => [...exams].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
     [exams]
   );
-  const currentIdx = sortedExams.findIndex(e => e.id === examId);
+  const currentIdx = sortedExams.findIndex(e => e.id === activeExamId);
   const prevExam = currentIdx > 0 ? sortedExams[currentIdx - 1] : null;
 
-  const ilb = individualLeaderboard(examId);
-  const tlb = teamLeaderboard(examId);
+  const ilb = individualLeaderboard(activeExamId);
+  const tlb = teamLeaderboard(activeExamId);
   const prevIlb = prevExam ? individualLeaderboard(prevExam.id) : null;
   const prevTlb = prevExam ? teamLeaderboard(prevExam.id) : null;
-  const exam = exams.find(e => e.id === examId)!;
+  const exam = exams.find(e => e.id === activeExamId)!;
 
   const podium = tlb.slice(0, 3);
   const restTeams = tlb.slice(3);
@@ -65,7 +72,7 @@ const Leaderboard = () => {
         title="Leaderboard"
         description="Switch between team and individual ranks. Pick any exam to rewind the action."
         action={
-          <Select value={examId} onValueChange={setExamId}>
+          <Select value={activeExamId} onValueChange={setExamId}>
             <SelectTrigger className="w-56 bg-card border-border">
               <SelectValue />
             </SelectTrigger>
@@ -81,7 +88,7 @@ const Leaderboard = () => {
       />
 
       <div className="mb-8">
-        <WinnerPanel examId={examId} />
+        <WinnerPanel examId={activeExamId} />
       </div>
 
       <Tabs defaultValue="teams" className="w-full">
