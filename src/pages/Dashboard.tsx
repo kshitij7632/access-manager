@@ -39,6 +39,17 @@ const Dashboard = () => {
   const topper = ilb[0];
   const podium = tlb.slice(0, 3);
 
+  if (!winner || !topper) {
+    return (
+      <div>
+        <LiveTicker />
+        <div className="px-4 md:px-10 py-12 text-center text-muted-foreground">
+          {latestExam.name} · Awaiting marks. Upload results to light up the arena.
+        </div>
+      </div>
+    );
+  }
+
   // Momentum: biggest climber by rank vs previous exam
   const movements = tlb.map(t => {
     const prev = prevTlb?.find(p => p.team.id === t.team.id);
