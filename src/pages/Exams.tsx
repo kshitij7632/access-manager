@@ -1,5 +1,4 @@
 import { PageHeader } from "@/components/PageHeader";
-import { students } from "@/data/mock";
 import { useAppState } from "@/context/AppStateContext";
 import { useAuth } from "@/context/AuthContext";
 import { NewExamDialog } from "@/components/NewExamDialog";
@@ -8,7 +7,7 @@ import { FileText, Calendar, Users, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Exams = () => {
-  const { exams, marks, individualLeaderboard } = useAppState();
+  const { exams, marks, students, individualLeaderboard } = useAppState();
   const { user } = useAuth();
   const canEdit = user?.role === "staff" || user?.role === "super_admin";
 

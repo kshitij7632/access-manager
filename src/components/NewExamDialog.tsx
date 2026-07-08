@@ -19,7 +19,7 @@ export const NewExamDialog = () => {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [totalMarks, setTotalMarks] = useState(100);
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = name.trim();
     const trimmedSubject = subject.trim();
@@ -31,7 +31,11 @@ export const NewExamDialog = () => {
       toast.error("Total marks must be 1–1000");
       return;
     }
-    const created = addExam({ name: trimmedName, subject: trimmedSubject, date, totalMarks });
+    const created = await addExam({ name: trimmedName, subject: trimmedSubject, date, totalMarks });
+    if (!created) {
+      toast.error("Could not create exam");
+      return;
+    }
     toast.success("Exam created", { description: `${created.name} on ${new Date(date).toDateString()}` });
     setOpen(false);
     setName(""); setSubject(""); setTotalMarks(100);

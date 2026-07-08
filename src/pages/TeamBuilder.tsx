@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { students as mockStudents } from "@/data/mock";
+import { useAppState } from "@/context/AppStateContext";
 import {
   Search, ChevronRight, ChevronLeft, Plus, Trash2, Users as UsersIcon,
   Sparkles, Check, Star, Crown,
@@ -24,16 +24,7 @@ type DemoStudent = {
 };
 
 const STANDARDS = ["Class 11", "Class 12", "Dropper"];
-const demoStudents: DemoStudent[] = mockStudents.map((s, i) => ({
-  id: s.id,
-  name: s.name,
-  standard: STANDARDS[i % STANDARDS.length],
-  branch: s.branch,
-  batch: s.batch,
-  rollNo: `R${String(i + 1).padStart(3, "0")}`,
-}));
-
-const ALL_BRANCHES = Array.from(new Set(demoStudents.map((s) => s.branch)));
+// demoStudents & ALL_BRANCHES are now computed inside the component from live data.
 
 // Color palette for team tags (HSL strings, design-token friendly)
 const TEAM_COLORS = [
@@ -69,6 +60,17 @@ const initials = (name: string) =>
   name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 
 const TeamBuilder = () => {
+  const { students: liveStudents } = useAppState();
+  const demoStudents: DemoStudent[] = useMemo(() => liveStudents.map((s, i) => ({
+    id: s.id,
+    name: s.name,
+    standard: STANDARDS[i % STANDARDS.length],
+    branch: s.branch,
+    batch: s.batch,
+    rollNo: `R${String(i + 1).padStart(3, "0")}`,
+  })), [liveStudents]);
+  const ALL_BRANCHES = useMemo(() => Array.from(new Set(demoStudents.map(s => s.branch))), [demoStudents]);
+
   const [standard, setStandard] = useState<string>("all");
   const [branch, setBranch] = useState<string>("all");
   const [query, setQuery] = useState("");
