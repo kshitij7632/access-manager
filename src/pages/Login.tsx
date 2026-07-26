@@ -51,10 +51,9 @@ const Login = () => {
             Where every test is a stadium and every student is a starter.
           </p>
           <div className="mt-8 rounded-xl border border-primary-foreground/15 bg-primary-foreground/5 p-4 text-primary-foreground/80 text-xs space-y-1">
-            <div className="font-bold text-accent uppercase tracking-widest text-[10px]">Demo accounts</div>
-            <div>admin@scorebuzz.app · admin123</div>
-            <div>staff@scorebuzz.app · staff123</div>
-            <div>student@scorebuzz.app · student123</div>
+            <div className="font-bold text-accent uppercase tracking-widest text-[10px]">Access</div>
+            <div>Accounts are provisioned by your admin.</div>
+            <div>Forgot your password? Use the reset link below.</div>
           </div>
         </div>
         <div className="text-xs text-primary-foreground/50">© ScoreBuzz · Demo build</div>
