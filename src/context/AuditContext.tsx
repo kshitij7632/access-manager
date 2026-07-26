@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 
 export type AuditAction =
   | "user.create"
@@ -21,7 +23,7 @@ export type AuditEntry = {
   targetId?: string;
   targetLabel?: string;
   detail?: string;
-  at: string; // ISO
+  at: string;
 };
 
 type AuditValue = {
@@ -30,38 +32,61 @@ type AuditValue = {
   clear: () => void;
 };
 
-const KEY = "scorebuzz.audit";
-const MAX = 500;
-
 const AuditContext = createContext<AuditValue | null>(null);
 
+const rowToEntry = (r: any): AuditEntry => ({
+  id: r.id,
+  action: r.action,
+  actorId: r.actor_id ?? undefined,
+  actorName: r.actor_name ?? undefined,
+  actorRole: r.actor_role ?? undefined,
+  targetId: r.target_id ?? undefined,
+  targetLabel: r.target_label ?? undefined,
+  detail: r.detail ?? undefined,
+  at: r.created_at ?? r.at ?? new Date().toISOString(),
+});
+
 export const AuditProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useAuth();
   const [entries, setEntries] = useState<AuditEntry[]>([]);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) setEntries(JSON.parse(raw));
-    } catch {}
-  }, []);
+  const load = useCallback(async () => {
+    if (!user) { setEntries([]); return; }
+    const { data } = await supabase
+      .from("audit_log")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    setEntries((data ?? []).map(rowToEntry));
+  }, [user]);
 
-  const persist = useCallback((next: AuditEntry[]) => {
-    setEntries(next);
-    localStorage.setItem(KEY, JSON.stringify(next));
-  }, []);
+  useEffect(() => {
+    void load();
+    if (!user) return;
+    const ch = supabase
+      .channel("audit-live")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "audit_log" }, () => { void load(); })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user, load]);
 
   const log: AuditValue["log"] = useCallback((entry) => {
-    setEntries(prev => {
-      const next = [
-        { ...entry, id: `a_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, at: new Date().toISOString() },
-        ...prev,
-      ].slice(0, MAX);
-      localStorage.setItem(KEY, JSON.stringify(next));
-      return next;
+    const row = {
+      action: entry.action,
+      actor_id: entry.actorId ?? null,
+      actor_name: entry.actorName ?? null,
+      actor_role: entry.actorRole ?? null,
+      target_id: entry.targetId ?? null,
+      target_label: entry.targetLabel ?? null,
+      detail: entry.detail ?? null,
+    };
+    // Fire-and-forget; realtime will refresh the list.
+    supabase.from("audit_log").insert(row).then(({ error }) => {
+      if (error) console.error("audit_log.insert", error);
     });
   }, []);
 
-  const clear = useCallback(() => persist([]), [persist]);
+  const clear = useCallback(() => setEntries([]), []);
 
   return <AuditContext.Provider value={{ entries, log, clear }}>{children}</AuditContext.Provider>;
 };
