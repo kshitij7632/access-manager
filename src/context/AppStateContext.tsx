@@ -19,6 +19,7 @@ type AppStateValue = {
   exams: Exam[];
   marks: Mark[];
   latestExamId: string;
+  refresh: () => Promise<void>;
   getTeam: (id: string) => Team;
   getStudent: (id: string) => Student;
   studentTotalForExam: (studentId: string, examId: string) => number;
@@ -85,10 +86,11 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
 
   const loadAll = useCallback(async () => {
     // Fire in parallel; tolerate any single failure.
-    const [teamsRes, teamMembersRes, profilesRes, examsRes, marksRes] = await Promise.all([
+    const [teamsRes, teamMembersRes, profilesRes, rolesRes, examsRes, marksRes] = await Promise.all([
       supabase.from("teams").select("*"),
       supabase.from("team_members").select("team_id, user_id"),
       supabase.from("profiles").select("id, name, email, student_class, roll_no"),
+      supabase.from("user_roles").select("user_id, role"),
       supabase.from("exams").select("*").order("date", { ascending: true }),
       supabase.from("marks").select("exam_id, student_id, marks"),
     ]);
@@ -96,6 +98,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     const teamRows = (teamsRes.data ?? []) as any[];
     const memberRows = (teamMembersRes.data ?? []) as any[];
     const profileRows = (profilesRes.data ?? []) as any[];
+    const roleRows = (rolesRes.data ?? []) as any[];
     const examRows = (examsRes.data ?? []) as any[];
     const markRows = (marksRes.data ?? []) as any[];
 
@@ -114,7 +117,13 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     const teamOf = new Map<string, string>();
     memberRows.forEach(r => { teamOf.set(r.user_id, r.team_id); });
 
-    const nextStudents: Student[] = profileRows.map(p => ({
+    // Filter to rows where role = 'student'
+    const studentUserIds = new Set(roleRows.filter((r: any) => r.role === "student").map((r: any) => r.user_id));
+    const studentProfiles = roleRows.length > 0
+      ? profileRows.filter((p: any) => studentUserIds.has(p.id))
+      : profileRows;
+
+    const nextStudents: Student[] = studentProfiles.map(p => ({
       id: p.id,
       name: p.name ?? p.email ?? "Student",
       batch: p.batch ?? "—",
@@ -187,6 +196,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     exams,
     marks,
     latestExamId,
+    refresh: loadAll,
     getTeam: (id) => teamById.get(id) ?? EMPTY_TEAM,
     getStudent: (id) => studentById.get(id) ?? EMPTY_STUDENT,
     studentTotalForExam: (studentId, examId) =>

@@ -11,10 +11,10 @@ export type AuthUser = {
   role: Role;
   studentClass?: string;
   rollNo?: string;
+  mustChangePassword?: boolean;
 };
 
-export type AppUser = AuthUser & { password?: string; createdAt?: string; mustResetPassword?: boolean };
-export type ResetTicket = { email: string; tempPassword: string; issuedAt: string; used: boolean };
+export type AppUser = AuthUser & { password?: string; createdAt?: string };
 
 type Result = { ok: boolean; error?: string; mustReset?: boolean };
 
@@ -22,25 +22,23 @@ type AuthValue = {
   user: AuthUser | null;
   loading: boolean;
   users: AppUser[];
-  resetTickets: ResetTicket[];
   refreshUsers: () => Promise<void>;
   login: (email: string, password: string) => Promise<Result>;
   logout: () => Promise<void>;
-  adminCreateUser: (input: { name: string; email: string; password: string; role: Role; studentClass?: string; rollNo?: string }) => Promise<{ ok: boolean; error?: string; user?: AuthUser }>;
+  adminCreateUser: (input: { name: string; email?: string; password?: string; role: Role; studentClass?: string; rollNo?: string }) => Promise<{ ok: boolean; error?: string; user?: AuthUser }>;
+  adminResetPassword: (id: string) => Promise<{ ok: boolean; error?: string }>;
   deleteUser: (id: string) => Promise<{ ok: boolean; error?: string }>;
   updateUserRole: (id: string, role: Role) => Promise<{ ok: boolean; error?: string }>;
-  requestPasswordReset: (email: string) => Promise<{ ok: boolean; error?: string }>;
-  resetPasswordWithTemp: (email: string, tempPassword: string, newPassword: string) => Promise<{ ok: boolean; error?: string }>;
   updateProfile: (input: { name?: string; email?: string }) => Promise<{ ok: boolean; error?: string }>;
   changePassword: (current: string, next: string) => Promise<{ ok: boolean; error?: string }>;
-  bulkCreateStudents: (rows: { name: string; email: string; password?: string; studentClass?: string; rollNo?: string }[]) => Promise<{ created: AuthUser[]; errors: { row: number; email?: string; error: string }[] }>;
+  bulkCreateStudents: (rows: { name: string; email?: string; password?: string; studentClass?: string; rollNo?: string }[]) => Promise<{ created: AuthUser[]; errors: { row: number; email?: string; error: string }[] }>;
 };
 
 const AuthContext = createContext<AuthValue | null>(null);
 
 async function loadProfile(userId: string, email: string): Promise<AuthUser | null> {
   const [{ data: profile }, { data: roleRows }] = await Promise.all([
-    supabase.from("profiles").select("id, name, email, student_class, roll_no").eq("id", userId).maybeSingle(),
+    supabase.from("profiles").select("id, name, email, student_class, roll_no, must_change_password").eq("id", userId).maybeSingle(),
     supabase.from("user_roles").select("role").eq("user_id", userId),
   ]);
 
@@ -59,18 +57,18 @@ async function loadProfile(userId: string, email: string): Promise<AuthUser | nu
     role,
     studentClass: p.student_class ?? undefined,
     rollNo: p.roll_no ?? undefined,
+    mustChangePassword: p.must_change_password ?? false,
   };
 }
 
 async function fetchAllUsers(): Promise<AppUser[]> {
   const [{ data: profiles }, { data: roles }] = await Promise.all([
-    supabase.from("profiles").select("id, name, email, student_class, roll_no, created_at"),
+    supabase.from("profiles").select("id, name, email, student_class, roll_no, must_change_password, created_at"),
     supabase.from("user_roles").select("user_id, role"),
   ]);
   const roleByUser = new Map<string, Role>();
   (roles ?? []).forEach((r: any) => {
     const cur = roleByUser.get(r.user_id);
-    // highest priority wins
     const priority = (x?: Role) => (x === "super_admin" ? 3 : x === "staff" ? 2 : x === "student" ? 1 : 0);
     if (priority(r.role) > priority(cur)) roleByUser.set(r.user_id, r.role);
   });
@@ -81,6 +79,7 @@ async function fetchAllUsers(): Promise<AppUser[]> {
     role: roleByUser.get(p.id) ?? "student",
     studentClass: p.student_class ?? undefined,
     rollNo: p.roll_no ?? undefined,
+    mustChangePassword: p.must_change_password ?? false,
     createdAt: p.created_at ?? undefined,
   }));
 }
@@ -88,7 +87,6 @@ async function fetchAllUsers(): Promise<AppUser[]> {
 async function invokeAdmin(action: string, payload: Record<string, unknown> = {}) {
   const { data, error } = await supabase.functions.invoke("admin-users", { body: { action, ...payload } });
   if (error) {
-    // Try to extract server-side error text
     const msg = (data as any)?.error ?? error.message ?? "Admin request failed";
     return { ok: false as const, error: msg };
   }
@@ -110,7 +108,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const u = await loadProfile(session.user.id, session.user.email ?? "");
       setUser(u);
-      // Load user directory in the background — RLS filters what the caller can see
       void refreshUsers();
     } catch (e) {
       console.error("loadProfile failed", e);
@@ -131,7 +128,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login: AuthValue["login"] = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error) return { ok: false, error: error.message };
-    if (data.session) await hydrate(data.session);
+    if (data.session) {
+      const u = await loadProfile(data.session.user.id, data.session.user.email ?? "");
+      setUser(u);
+      void refreshUsers();
+      if (u?.mustChangePassword) {
+        return { ok: true, mustReset: true };
+      }
+    }
     return { ok: true };
   };
 
@@ -139,21 +143,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
     setUser(null);
     setUsers([]);
-  };
-
-  const requestPasswordReset: AuthValue["requestPasswordReset"] = async (email) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    if (error) return { ok: false, error: error.message };
-    return { ok: true };
-  };
-
-  const resetPasswordWithTemp: AuthValue["resetPasswordWithTemp"] = async (_email, _temp, newPassword) => {
-    if (!newPassword || newPassword.length < 6) return { ok: false, error: "Password must be 6+ chars" };
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) return { ok: false, error: error.message };
-    return { ok: true };
   };
 
   const updateProfile: AuthValue["updateProfile"] = async ({ name, email }) => {
@@ -175,9 +164,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const changePassword: AuthValue["changePassword"] = async (_current, next) => {
-    if (!next || next.length < 6) return { ok: false, error: "Password must be 6+ chars" };
+    if (!next || next.length < 6) return { ok: false, error: "Password must be at least 6 characters" };
+    if (!user) return { ok: false, error: "Not authenticated" };
+
     const { error } = await supabase.auth.updateUser({ password: next });
     if (error) return { ok: false, error: error.message };
+
+    // Set must_change_password = false in profiles table
+    const { error: pErr } = await supabase.from("profiles").update({ must_change_password: false }).eq("id", user.id);
+    if (pErr) console.error("Error clearing must_change_password flag:", pErr);
+
+    setUser({ ...user, mustChangePassword: false });
     return { ok: true };
   };
 
@@ -187,6 +184,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await refreshUsers();
     const created = (res.data as any)?.user as AuthUser | undefined;
     return { ok: true, user: created };
+  };
+
+  const adminResetPassword: AuthValue["adminResetPassword"] = async (id) => {
+    const res = await invokeAdmin("reset_password", { id });
+    if (!res.ok) return { ok: false, error: res.error };
+    await refreshUsers();
+    return { ok: true };
   };
 
   const deleteUser: AuthValue["deleteUser"] = async (id) => {
@@ -214,11 +218,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AuthContext.Provider
       value={{
-        user, loading, users, resetTickets: [],
+        user, loading, users,
         refreshUsers,
         login, logout,
-        adminCreateUser, deleteUser, updateUserRole,
-        requestPasswordReset, resetPasswordWithTemp,
+        adminCreateUser, adminResetPassword, deleteUser, updateUserRole,
         updateProfile, changePassword, bulkCreateStudents,
       }}
     >

@@ -40,7 +40,7 @@ const ForgotPassword = () => {
           <div className="text-[10px] uppercase tracking-[0.3em] text-accent font-bold">Account recovery</div>
           <h1 className="font-display text-4xl mt-1">Forgot password?</h1>
           <p className="text-muted-foreground text-sm mt-2">
-            Enter your email and we'll generate a temporary password. <span className="text-foreground">In production, this would be emailed.</span>
+            Enter your email to receive password reset instructions.
           </p>
         </div>
 

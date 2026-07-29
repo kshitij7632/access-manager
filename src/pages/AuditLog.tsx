@@ -42,7 +42,7 @@ const AuditLog = () => {
             <AlertDialogHeader>
               <AlertDialogTitle>Clear the entire audit log?</AlertDialogTitle>
               <AlertDialogDescription>
-                This permanently removes all {entries.length} entries from local storage.
+                This permanently removes all {entries.length} entries.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

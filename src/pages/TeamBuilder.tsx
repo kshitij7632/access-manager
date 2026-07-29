@@ -12,6 +12,9 @@ import {
   Sparkles, Check, Star, Crown,
 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
+import { useAudit } from "@/context/AuditContext";
 import { cn } from "@/lib/utils";
 
 type DemoStudent = {
@@ -181,6 +184,60 @@ const TeamBuilder = () => {
     if (id && activeTeam.memberIds.includes(id)) removeFromTeam(id);
   };
 
+  const { user } = useAuth();
+  const { log: auditLog } = useAudit();
+  const [saving, setSaving] = useState(false);
+
+  const handleFinalize = async () => {
+    setSaving(true);
+    try {
+      for (const t of teams) {
+        const isTempId = t.id.startsWith("team-");
+        const teamPayload = {
+          name: t.name,
+          color: t.color,
+          captain_id: t.captainId || null,
+          created_by: user?.id || null,
+        };
+
+        let teamId = t.id;
+        if (isTempId) {
+          const { data, error } = await supabase.from("teams").insert(teamPayload).select("id").single();
+          if (error) throw error;
+          teamId = data.id;
+        } else {
+          const { error } = await supabase.from("teams").update(teamPayload).eq("id", t.id);
+          if (error) throw error;
+        }
+
+        // Sync team members
+        await supabase.from("team_members").delete().eq("team_id", teamId);
+        if (t.memberIds.length > 0) {
+          const memberRows = t.memberIds.map(uid => ({ team_id: teamId, user_id: uid }));
+          const { error: memErr } = await supabase.from("team_members").insert(memberRows);
+          if (memErr) throw memErr;
+        }
+      }
+
+      auditLog({
+        action: "user.bulk_import",
+        actorId: user?.id,
+        actorName: user?.name,
+        actorRole: user?.role,
+        detail: `Finalized draft for ${teams.length} teams (${assignedStudents} students assigned)`,
+      });
+
+      toast.success(`Saved ${teams.length} team(s) to Supabase`, {
+        description: `${assignedStudents} students drafted & roster updated`,
+      });
+    } catch (err: any) {
+      console.error("Failed to finalize team draft:", err);
+      toast.error(err?.message || "Failed to save team draft to database");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="px-4 md:px-10 py-8 md:py-12">
       <PageHeader
@@ -190,10 +247,11 @@ const TeamBuilder = () => {
         action={
           <Button
             size="lg"
-            onClick={() => toast.success(`Saved ${teams.length} team(s) · ${assignedStudents} students drafted`)}
+            disabled={saving}
+            onClick={handleFinalize}
             className="bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold font-bold"
           >
-            <Sparkles className="size-4 mr-1" /> Finalize Draft
+            <Sparkles className="size-4 mr-1" /> {saving ? "Saving…" : "Finalize Draft"}
           </Button>
         }
       />

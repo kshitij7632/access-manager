@@ -12,7 +12,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Shield, Briefcase, GraduationCap, UserPlus, Trash2 } from "lucide-react";
+import { Shield, Briefcase, GraduationCap, UserPlus, Trash2, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { can, creatableRoles } from "@/lib/permissions";
@@ -25,7 +25,7 @@ const roleMeta: Record<Role, { label: string; icon: any; cls: string }> = {
 };
 
 const Users = () => {
-  const { user, users, adminCreateUser, deleteUser, updateUserRole } = useAuth();
+  const { user, users, adminCreateUser, adminResetPassword, deleteUser, updateUserRole } = useAuth();
 
   const allowedRoles = useMemo(() => creatableRoles(user?.role), [user?.role]);
   const isStaff = user?.role === "staff";
@@ -205,22 +205,58 @@ const Users = () => {
                   <TableCell className="text-right">
                     <div className="inline-flex items-center gap-2">
                       {isAdmin && (
-                        <Select
-                          value={u.role}
-                          onValueChange={async (v) => {
-                            const res = await updateUserRole(u.id, v as Role);
-                            if (!res.ok) toast.error(res.error ?? "Failed");
-                            else toast.success(`Role updated to ${roleMeta[v as Role].label}`);
-                          }}
-                          disabled={isSelf}
-                        >
-                          <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="student">Student</SelectItem>
-                            <SelectItem value="staff">Staff</SelectItem>
-                            <SelectItem value="super_admin">Super Admin</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <>
+                          <Select
+                            value={u.role}
+                            onValueChange={async (v) => {
+                              const res = await updateUserRole(u.id, v as Role);
+                              if (!res.ok) toast.error(res.error ?? "Failed");
+                              else toast.success(`Role updated to ${roleMeta[v as Role].label}`);
+                            }}
+                            disabled={isSelf}
+                          >
+                            <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="student">Student</SelectItem>
+                              <SelectItem value="staff">Staff</SelectItem>
+                              <SelectItem value="super_admin">Super Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-8 text-xs font-medium gap-1.5 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                                <KeyRound className="size-3.5" /> Reset Pass
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Reset password for {u.name}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will reset {u.name}'s password to <strong className="font-mono text-foreground">student123</strong>. The user will be required to change their password on their next login.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-amber-500 text-slate-950 font-bold hover:bg-amber-400"
+                                  onClick={async () => {
+                                    const res = await adminResetPassword(u.id);
+                                    if (!res.ok) {
+                                      toast.error(res.error ?? "Password reset failed");
+                                    } else {
+                                      toast.success(`Password reset for ${u.name}`, {
+                                        description: "Set to default password 'student123'. Must change on next login.",
+                                      });
+                                    }
+                                  }}
+                                >
+                                  Reset Password
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
                       )}
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

@@ -52,11 +52,11 @@ const Login = () => {
           </p>
           <div className="mt-8 rounded-xl border border-primary-foreground/15 bg-primary-foreground/5 p-4 text-primary-foreground/80 text-xs space-y-1">
             <div className="font-bold text-accent uppercase tracking-widest text-[10px]">Access</div>
-            <div>Accounts are provisioned by your admin.</div>
-            <div>Forgot your password? Use the reset link below.</div>
+            <div>Accounts and passwords are managed by your Administrator.</div>
+            <div>Default student password: <code className="text-accent font-bold">student123</code></div>
           </div>
         </div>
-        <div className="text-xs text-primary-foreground/50">© ScoreBuzz · Demo build</div>
+        <div className="text-xs text-primary-foreground/50">© ScoreBuzz</div>
         <div aria-hidden className="absolute -right-32 -bottom-32 size-[480px] rounded-full bg-accent/20 blur-3xl" />
       </div>
 
@@ -79,13 +79,10 @@ const Login = () => {
           <form onSubmit={handleSignIn} className="space-y-3">
             <div>
               <Label htmlFor="si-email">Email</Label>
-              <Input id="si-email" type="email" value={siEmail} onChange={e => setSiEmail(e.target.value)} placeholder="you@scorebuzz.app" required maxLength={120} />
+              <Input id="si-email" type="email" value={siEmail} onChange={e => setSiEmail(e.target.value)} placeholder="firstname.lastname@lakshyaprivatetuitions.com" required maxLength={120} />
             </div>
             <div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="si-password">Password</Label>
-                <Link to="/forgot-password" className="text-xs text-accent hover:underline font-medium">Forgot?</Link>
-              </div>
+              <Label htmlFor="si-password">Password</Label>
               <Input id="si-password" type="password" value={siPassword} onChange={e => setSiPassword(e.target.value)} placeholder="••••••••" required maxLength={60} />
             </div>
             <Button type="submit" size="lg" className="w-full bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold font-bold">
@@ -96,7 +93,7 @@ const Login = () => {
           <div className="rounded-xl border border-border bg-muted/30 p-3 flex items-start gap-3 text-xs text-muted-foreground">
             <Lock className="size-4 mt-0.5 text-accent flex-shrink-0" />
             <div>
-              <span className="text-foreground font-medium">Accounts are issued, not self-created.</span> Students get credentials from staff. Staff accounts are issued by a super admin.
+              <span className="text-foreground font-medium">Accounts & Passwords are managed by Admin.</span> Default password for new students is <code className="text-accent font-bold">student123</code>. If you forgot your password, contact your administrator.
             </div>
           </div>
         </div>

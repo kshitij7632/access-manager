@@ -17,9 +17,8 @@ import TeamBuilder from "./pages/TeamBuilder";
 import Students from "./pages/Students";
 import Users from "./pages/Users";
 import Login from "./pages/Login";
+import ChangePassword from "./pages/ChangePassword";
 import MarksUpload from "./pages/MarksUpload";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
 import AuditLog from "./pages/AuditLog";
 import NotFound from "./pages/NotFound.tsx";
@@ -32,14 +31,13 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AuditProvider>
-          <NotificationsProvider>
-            <AuthProvider>
+        <AuthProvider>
+          <AuditProvider>
+            <NotificationsProvider>
               <AppStateProvider>
                 <Routes>
                   <Route path="/login" element={<Login />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/change-password" element={<RequireAuth><ChangePassword /></RequireAuth>} />
                   <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/profile" element={<Profile />} />
@@ -90,9 +88,9 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </AppStateProvider>
-            </AuthProvider>
-          </NotificationsProvider>
-        </AuditProvider>
+            </NotificationsProvider>
+          </AuditProvider>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

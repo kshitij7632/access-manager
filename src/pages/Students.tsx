@@ -4,25 +4,108 @@ import { useAppState } from "@/context/AppStateContext";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 
+import { useAuth } from "@/context/AuthContext";
+import { StudentImportDialog } from "@/components/StudentImportDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { UserPlus } from "lucide-react";
+import { toast } from "sonner";
+
 const Students = () => {
-  const { students, getTeam, studentOverall, individualLeaderboard, latestExamId } = useAppState();
+  const { students, getTeam, studentOverall, individualLeaderboard, latestExamId, refresh: refreshAppState } = useAppState();
+  const { user, adminCreateUser } = useAuth();
   const [q, setQ] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [studentClass, setStudentClass] = useState("");
+  const [rollNo, setRollNo] = useState("");
+
+  const canAdd = user?.role === "super_admin" || user?.role === "staff";
   const ilb = latestExamId ? individualLeaderboard(latestExamId) : [];
   const rankFor = (id: string) => ilb.find(r => r.student.id === id)?.rank ?? 0;
 
+  const handleCreateStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await adminCreateUser({
+      name,
+      email,
+      password: password || "student123",
+      role: "student",
+      studentClass,
+      rollNo,
+    });
+    if (!res.ok) {
+      toast.error(res.error ?? "Could not create student");
+      return;
+    }
+    await refreshAppState();
+    toast.success("Student created successfully", { description: `${res.user?.name} (${res.user?.email})` });
+    setName(""); setEmail(""); setPassword(""); setStudentClass(""); setRollNo("");
+    setAddOpen(false);
+  };
+
   const filtered = students.filter(s =>
-    s.name.toLowerCase().includes(q.toLowerCase()) ||
-    s.branch.toLowerCase().includes(q.toLowerCase()) ||
-    s.batch.toLowerCase().includes(q.toLowerCase())
+    (s.name || "").toLowerCase().includes(q.toLowerCase()) ||
+    (s.branch || "").toLowerCase().includes(q.toLowerCase()) ||
+    (s.batch || "").toLowerCase().includes(q.toLowerCase())
   );
 
   return (
     <div className="px-4 md:px-10 py-8 md:py-12">
-      <PageHeader
-        eyebrow="Roster"
-        title="Students"
-        description="Every player. Every stat. Search by name, branch or batch."
-      />
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+        <PageHeader
+          eyebrow="Roster"
+          title="Students"
+          description="Every player. Every stat. Search by name, branch or batch."
+        />
+        {canAdd && (
+          <div className="flex items-center gap-2">
+            <StudentImportDialog onSuccess={refreshAppState} />
+            <Dialog open={addOpen} onOpenChange={setAddOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold font-bold">
+                  <UserPlus className="size-4 mr-2" /> Add Student
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Student Account</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCreateStudent} className="space-y-4">
+                  <div>
+                    <Label htmlFor="st-name">Full Name</Label>
+                    <Input id="st-name" value={name} onChange={e => setName(e.target.value)} required maxLength={60} placeholder="e.g. Rahul Sharma" />
+                  </div>
+                  <div>
+                    <Label htmlFor="st-email">Email Address</Label>
+                    <Input id="st-email" type="email" value={email} onChange={e => setEmail(e.target.value)} required maxLength={120} placeholder="rahul@example.com" />
+                  </div>
+                  <div>
+                    <Label htmlFor="st-password">Password (optional, default: student123)</Label>
+                    <Input id="st-password" type="text" value={password} onChange={e => setPassword(e.target.value)} minLength={6} maxLength={60} placeholder="student123" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="st-class">Class / Section</Label>
+                      <Input id="st-class" value={studentClass} onChange={e => setStudentClass(e.target.value)} placeholder="e.g. 10-A" maxLength={30} />
+                    </div>
+                    <div>
+                      <Label htmlFor="st-roll">Roll No.</Label>
+                      <Input id="st-roll" value={rollNo} onChange={e => setRollNo(e.target.value)} placeholder="e.g. 23" maxLength={20} />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" className="bg-gradient-gold text-accent-foreground font-bold">Create Account</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
+      </div>
 
       <div className="relative max-w-md mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />

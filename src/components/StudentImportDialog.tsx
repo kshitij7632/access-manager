@@ -7,13 +7,16 @@ import { Upload, FileText, Download, AlertCircle, CheckCircle2 } from "lucide-re
 import { toast } from "sonner";
 import { parseCSVWithHeader, downloadCSV } from "@/lib/csv";
 
+import { useAppState } from "@/context/AppStateContext";
+
 const SAMPLE = `name,email,password,class,rollNo
 Aarav Kumar,aarav.k@scorebuzz.app,welcome123,10-A,12
 Priya Singh,priya.s@scorebuzz.app,welcome123,10-A,13
-Rohit Mehta,rohit.m@scorebuzz.app,,10-B,5`;
+Rohit Mehta,,welcome123,10-B,5`;
 
-export const StudentImportDialog = ({ trigger }: { trigger?: React.ReactNode }) => {
+export const StudentImportDialog = ({ trigger, onSuccess }: { trigger?: React.ReactNode; onSuccess?: () => void }) => {
   const { bulkCreateStudents } = useAuth();
+  const { refresh: refreshAppState } = useAppState();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [result, setResult] = useState<{ created: number; errors: { row: number; email?: string; error: string }[] } | null>(null);
@@ -30,13 +33,13 @@ export const StudentImportDialog = ({ trigger }: { trigger?: React.ReactNode }) 
   const handleImport = async () => {
     if (!text.trim()) { toast.error("Paste or upload a CSV first"); return; }
     const { headers, rows } = parseCSVWithHeader(text);
-    if (!headers.includes("name") || !headers.includes("email")) {
-      toast.error("CSV must include 'name' and 'email' columns");
+    if (!headers.includes("name")) {
+      toast.error("CSV must include a 'name' column");
       return;
     }
     const mapped = rows.map(r => ({
       name: r.name,
-      email: r.email,
+      email: r.email || undefined,
       password: r.password || undefined,
       studentClass: r.class || r.studentClass || undefined,
       rollNo: r.rollNo || r.roll || undefined,
@@ -44,6 +47,8 @@ export const StudentImportDialog = ({ trigger }: { trigger?: React.ReactNode }) 
     const res = await bulkCreateStudents(mapped);
     setResult({ created: res.created.length, errors: res.errors });
     if (res.created.length) {
+      await refreshAppState();
+      onSuccess?.();
       toast.success(`Created ${res.created.length} student${res.created.length === 1 ? "" : "s"}`);
     } else {
       toast.error("No students created");
@@ -59,7 +64,7 @@ export const StudentImportDialog = ({ trigger }: { trigger?: React.ReactNode }) 
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Bulk import students from CSV</DialogTitle>
+          <DialogTitle>Bulk import students (CSV / Excel)</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -67,12 +72,12 @@ export const StudentImportDialog = ({ trigger }: { trigger?: React.ReactNode }) 
             <div className="flex items-center gap-2 text-foreground font-bold">
               <FileText className="size-3.5" /> Required: <code className="font-mono">name, email</code> · Optional: <code className="font-mono">password, class, rollNo</code>
             </div>
-            <div>If password is blank, <code className="font-mono">student123</code> is set and the user must reset on first login.</div>
+            <div>If password is left empty, default password <code className="font-mono">student123</code> will be set automatically.</div>
           </div>
 
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-              <Upload className="size-4 mr-2" /> Choose CSV file
+              <Upload className="size-4 mr-2" /> Upload CSV / Excel
             </Button>
             <Button variant="ghost" size="sm" onClick={() => downloadCSV("student-template.csv", SAMPLE)}>
               <Download className="size-4 mr-2" /> Template
@@ -81,7 +86,7 @@ export const StudentImportDialog = ({ trigger }: { trigger?: React.ReactNode }) 
             <input
               ref={fileRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,text/csv,.xlsx,.xls"
               className="hidden"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
             />
