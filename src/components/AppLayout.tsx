@@ -32,10 +32,15 @@ const roleLabel: Record<string, string> = {
   super_admin: "Super Admin",
 };
 
+const getRoleLabel = (role: string | null | undefined): string => {
+  if (!role) return "No role assigned";
+  return roleLabel[role] ?? "Unknown role";
+};
+
 export const AppLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const nav = baseNav.filter(n => !user || n.roles.includes(user.role));
+  const nav = baseNav.filter(n => user?.role && n.roles.includes(user.role));
 
   const handleLogout = () => {
     logout();
@@ -86,7 +91,7 @@ export const AppLayout = () => {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-bold truncate">{user.name}</div>
-                <div className="text-[10px] uppercase tracking-widest text-accent">{roleLabel[user.role]}</div>
+                <div className={`text-[10px] uppercase tracking-widest ${user.role ? 'text-accent' : 'text-amber-500'}`}>{getRoleLabel(user.role)}</div>
                 <div className="text-[10px] font-mono text-muted-foreground truncate mt-0.5">{user.id}</div>
               </div>
             </div>

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="cyan-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22D3EE" />
+      <stop offset="100%" stop-color="#0891B2" />
+    </linearGradient>
+    <linearGradient id="purple-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A78BFA" />
+      <stop offset="100%" stop-color="#7C3AED" />
+    </linearGradient>
+    <linearGradient id="coral-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FB923C" />
+      <stop offset="100%" stop-color="#EA580C" />
+    </linearGradient>
+    <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE047" />
+      <stop offset="100%" stop-color="#EAB308" />
+    </linearGradient>
+    <linearGradient id="trophy-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#334155" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+  </defs>
+
+  <!-- Sparkles -->
+  <path d="M 120 180 L 126 195 L 141 201 L 126 207 L 120 222 L 114 207 L 99 201 L 114 195 Z" fill="#FBBF24" />
+  <path d="M 390 180 L 396 195 L 411 201 L 396 207 L 390 222 L 384 207 L 369 201 L 384 195 Z" fill="#FBBF24" />
+  <path d="M 140 100 L 144 112 L 156 116 L 144 120 L 140 132 L 136 120 L 124 116 L 136 112 Z" fill="#FBBF24" />
+  <path d="M 370 100 L 374 112 L 386 116 L 374 120 L 370 132 L 366 120 L 354 116 L 366 112 Z" fill="#FBBF24" />
+
+  <!-- Leaderboard Bars -->
+  <!-- Bar 1 (Cyan) -->
+  <rect x="180" y="125" width="42" height="35" rx="10" fill="url(#cyan-grad)" />
+  <!-- Bar 2 (Purple) -->
+  <rect x="235" y="85" width="42" height="75" rx="10" fill="url(#purple-grad)" />
+  <!-- Bar 3 (Coral) -->
+  <rect x="290" y="60" width="42" height="100" rx="10" fill="url(#coral-grad)" />
+
+  <!-- Trophy Handles -->
+  <path d="M 140 210 C 90 210 90 290 150 295" stroke="url(#trophy-grad)" stroke-width="24" stroke-linecap="round" fill="none" />
+  <path d="M 372 210 C 422 210 422 290 362 295" stroke="url(#trophy-grad)" stroke-width="24" stroke-linecap="round" fill="none" />
+
+  <!-- Trophy Cup Body -->
+  <path d="M 150 180 L 362 180 L 340 310 C 320 360 192 360 172 310 Z" fill="url(#trophy-grad)" />
+  
+  <!-- Trophy Rim -->
+  <rect x="140" y="170" width="232" height="20" rx="10" fill="url(#trophy-grad)" />
+
+  <!-- Star Badge on Trophy -->
+  <path d="M 256 220 L 268 245 L 295 249 L 275 268 L 280 295 L 256 282 L 232 295 L 237 268 L 217 249 L 244 245 Z" fill="url(#gold-grad)" />
+
+  <!-- Trophy Stem -->
+  <rect x="236" y="345" width="40" height="45" fill="url(#trophy-grad)" />
+
+  <!-- Trophy Base Base Rings -->
+  <rect x="216" y="390" width="80" height="18" rx="8" fill="url(#gold-grad)" />
+  <rect x="196" y="408" width="120" height="24" rx="10" fill="url(#trophy-grad)" />
+
+  <!-- Base Shadow Oval -->
+  <ellipse cx="256" cy="450" rx="100" ry="12" fill="#E2E8F0" opacity="0.8" />
+</svg>

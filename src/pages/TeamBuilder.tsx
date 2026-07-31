@@ -108,13 +108,13 @@ const TeamBuilder = () => {
   }, [filteredPool, takenMap, showDisabled]);
 
   const teamMembers = useMemo(
-    () => activeTeam.memberIds.map((id) => demoStudents.find((s) => s.id === id)!).filter(Boolean),
+    () => (activeTeam?.memberIds ?? []).map((id) => demoStudents.find((s) => s.id === id)).filter(Boolean) as Student[],
     [activeTeam],
   );
 
   const addToTeam = (id: string) => {
     if (takenMap.has(id)) {
-      toast.error(`Already in ${takenMap.get(id)!.name}`);
+      toast.error(`Already in ${takenMap.get(id)?.name ?? "another team"}`);
       return;
     }
     setTeams((prev) => prev.map((t) => (t.id === activeTeamId ? { ...t, memberIds: [...t.memberIds, id] } : t)));
@@ -213,7 +213,7 @@ const TeamBuilder = () => {
         // Sync team members
         await supabase.from("team_members").delete().eq("team_id", teamId);
         if (t.memberIds.length > 0) {
-          const memberRows = t.memberIds.map(uid => ({ team_id: teamId, user_id: uid }));
+          const memberRows = t.memberIds.map(uid => ({ team_id: teamId, student_id: uid }));
           const { error: memErr } = await supabase.from("team_members").insert(memberRows);
           if (memErr) throw memErr;
         }
@@ -283,8 +283,8 @@ const TeamBuilder = () => {
       <div className="rounded-2xl border border-border bg-gradient-card p-4 md:p-5 mb-6 grid gap-4 md:grid-cols-[1fr,1fr,2fr,auto] items-end">
         <div>
           <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Standard</Label>
-          <Select value={standard} onValueChange={setStandard}>
-            <SelectTrigger className="mt-1.5 bg-background"><SelectValue /></SelectTrigger>
+          <Select value={standard || undefined} onValueChange={setStandard}>
+            <SelectTrigger className="mt-1.5 bg-background"><SelectValue placeholder="Select standard…" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Standards</SelectItem>
               {STANDARDS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -293,8 +293,8 @@ const TeamBuilder = () => {
         </div>
         <div>
           <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Branch</Label>
-          <Select value={branch} onValueChange={setBranch}>
-            <SelectTrigger className="mt-1.5 bg-background"><SelectValue /></SelectTrigger>
+          <Select value={branch || undefined} onValueChange={setBranch}>
+            <SelectTrigger className="mt-1.5 bg-background"><SelectValue placeholder="Select branch…" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Branches</SelectItem>
               {ALL_BRANCHES.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
@@ -397,12 +397,12 @@ const TeamBuilder = () => {
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold truncate text-sm flex items-center gap-2">
                         {s.name}
-                        {taken && (
+                        {taken && ownerTeam && (
                           <span
                             className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded font-bold"
-                            style={{ background: `hsl(${ownerTeam!.color} / 0.2)`, color: `hsl(${ownerTeam!.color})` }}
+                            style={{ background: `hsl(${ownerTeam.color} / 0.2)`, color: `hsl(${ownerTeam.color})` }}
                           >
-                            {ownerTeam!.name}
+                            {ownerTeam.name}
                           </span>
                         )}
                       </div>
@@ -531,7 +531,7 @@ const TeamBuilder = () => {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {teams.map((t) => {
             const captain = t.captainId ? demoStudents.find((s) => s.id === t.captainId) : null;
-            const members = t.memberIds.map((id) => demoStudents.find((s) => s.id === id)!).filter(Boolean);
+            const members = (t.memberIds ?? []).map((id) => demoStudents.find((s) => s.id === id)).filter(Boolean) as Student[];
             return (
               <div
                 key={t.id}

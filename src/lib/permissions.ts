@@ -25,11 +25,12 @@ export const PERMS = {
 
 export type Permission = keyof typeof PERMS;
 
-export const can = (role: Role | undefined, perm: Permission): boolean =>
+/** Returns true only if role is a valid, non-null role that includes the permission. */
+export const can = (role: Role | null | undefined, perm: Permission): boolean =>
   !!role && (PERMS[perm] as readonly Role[]).includes(role);
 
 // Roles a given role is allowed to create
-export const creatableRoles = (role: Role | undefined): Role[] => {
+export const creatableRoles = (role: Role | null | undefined): Role[] => {
   if (role === "super_admin") return ["student", "staff", "super_admin"];
   if (role === "staff") return ["student"];
   return [];

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 export type AuditAction =
   | "user.create"
@@ -52,11 +53,16 @@ export const AuditProvider = ({ children }: { children: ReactNode }) => {
 
   const load = useCallback(async () => {
     if (!user) { setEntries([]); return; }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("audit_log")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(500);
+    if (error) {
+      console.error("audit_log load error:", error);
+      toast.error("Failed to load audit log", { description: error.message });
+      return;
+    }
     setEntries((data ?? []).map(rowToEntry));
   }, [user]);
 
@@ -80,9 +86,12 @@ export const AuditProvider = ({ children }: { children: ReactNode }) => {
       target_label: entry.targetLabel ?? null,
       detail: entry.detail ?? null,
     };
-    // Fire-and-forget; realtime will refresh the list.
+    // Fire-and-forget; realtime will refresh the list. But DO surface errors.
     supabase.from("audit_log").insert(row).then(({ error }) => {
-      if (error) console.error("audit_log.insert", error);
+      if (error) {
+        console.error("audit_log.insert error:", error);
+        toast.error("Failed to write audit log", { description: error.message });
+      }
     });
   }, []);
 

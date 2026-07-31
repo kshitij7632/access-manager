@@ -22,12 +22,16 @@ $$;
 
 -- ---------- Tables (created only if missing) ----------
 create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  name text,
-  email text,
-  student_class text,
-  roll_no text,
-  created_at timestamptz not null default now()
+  id                  uuid primary key references auth.users(id) on delete cascade,
+  name                text not null default '',
+  email               text,
+  class               text,
+  roll_no             text,
+  branch              text,
+  batch               text,
+  avatar_url          text,
+  must_reset_password boolean not null default true,
+  created_at          timestamptz not null default now()
 );
 
 create table if not exists public.user_roles (
@@ -149,10 +153,9 @@ create policy "profiles admin manage" on public.profiles
 -- user_roles (read only via policy; writes happen via service role in edge fn)
 drop policy if exists "user_roles read own"     on public.user_roles;
 drop policy if exists "user_roles read admin"   on public.user_roles;
-create policy "user_roles read own" on public.user_roles
-  for select to authenticated using (auth.uid() = user_id);
-create policy "user_roles read admin" on public.user_roles
-  for select to authenticated using (public.has_role(auth.uid(), 'super_admin') or public.has_role(auth.uid(), 'staff'));
+drop policy if exists "user_roles read all authed" on public.user_roles;
+create policy "user_roles read all authed" on public.user_roles
+  for select to authenticated using (true);
 
 -- teams / team_members
 drop policy if exists "teams read all"    on public.teams;

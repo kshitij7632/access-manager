@@ -25,7 +25,7 @@ const Login = () => {
     }
     if (res.mustReset) {
       toast.warning("Please set a new password");
-      navigate(`/reset-password?email=${encodeURIComponent(siEmail.trim())}`);
+      navigate("/change-password");
       return;
     }
     toast.success("Welcome back");

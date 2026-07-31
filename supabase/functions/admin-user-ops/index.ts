@@ -5,18 +5,26 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Helper: get calling user's role from DB
-async function getCallerRole(adminClient: ReturnType<typeof createClient>, callerId: string) {
-  const { data } = await adminClient
+/**
+ * Get calling user's role from DB.
+ * Returns null if the user has no role — never defaults to "student".
+ */
+async function getCallerRole(adminClient: ReturnType<typeof createClient>, callerId: string): Promise<string | null> {
+  const { data, error } = await adminClient
     .from("user_roles")
     .select("role")
     .eq("user_id", callerId)
     .order("role", { ascending: true })
     .limit(1);
+  if (error) {
+    console.error("getCallerRole query error:", error);
+    return null;
+  }
   const roles: string[] = (data ?? []).map((r: { role: string }) => r.role);
   if (roles.includes("super_admin")) return "super_admin";
   if (roles.includes("staff")) return "staff";
-  return "student";
+  if (roles.includes("student")) return "student";
+  return null; // No role assigned
 }
 
 Deno.serve(async (req) => {
@@ -65,36 +73,73 @@ Deno.serve(async (req) => {
       if (callerRole === "staff" && role !== "student") {
         return Response.json({ error: "Staff can only create student accounts" }, { status: 403, headers: corsHeaders });
       }
-      if (!["super_admin", "staff"].includes(callerRole)) {
+      if (!["super_admin", "staff"].includes(callerRole ?? "")) {
         return Response.json({ error: "Insufficient permissions" }, { status: 403, headers: corsHeaders });
       }
 
+      let uid = "";
+      let isExistingUser = false;
       const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
         user_metadata: { name },
       });
-      if (createErr || !created.user) {
-        return Response.json({ error: createErr?.message ?? "Create failed" }, { status: 400, headers: corsHeaders });
+      if (createErr || !created?.user) {
+        let existingId = "";
+        const { data: existingProfile } = await adminClient.from("profiles").select("id").eq("email", email).maybeSingle();
+        if (existingProfile) {
+          existingId = existingProfile.id;
+        } else {
+          const { data: userList } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+          const foundAuthUser = userList?.users?.find(usr => usr.email?.toLowerCase() === email.toLowerCase());
+          if (foundAuthUser) existingId = foundAuthUser.id;
+        }
+
+        if (existingId) {
+          uid = existingId;
+          isExistingUser = true;
+        } else {
+          return Response.json({ error: createErr?.message ?? "Create failed" }, { status: 400, headers: corsHeaders });
+        }
+      } else {
+        uid = created.user.id;
       }
 
-      const uid = created.user.id;
-      const avatar = name.trim().split(" ").map((p: string) => p[0]).join("").toUpperCase().slice(0, 2);
-
-      // Upsert profile
-      await adminClient.from("profiles").upsert({
+      // Upsert profile — check error
+      const { error: profileErr } = await adminClient.from("profiles").upsert({
         id: uid,
         name: name.trim(),
         email,
-        student_class: studentClass ?? null,
+        class: studentClass ?? null,
         roll_no: rollNo ?? null,
-        avatar,
+        must_reset_password: true,
       });
+      if (profileErr) {
+        if (!isExistingUser) {
+          await adminClient.auth.admin.deleteUser(uid);
+        }
+        return Response.json({ error: `Profile creation failed: ${profileErr.message}` }, { status: 400, headers: corsHeaders });
+      }
 
-      // Insert role (delete existing first to avoid duplicates)
-      await adminClient.from("user_roles").delete().eq("user_id", uid);
-      await adminClient.from("user_roles").insert({ user_id: uid, role });
+      // Insert role (delete existing first to avoid duplicates) — check errors
+      const { error: delRoleErr } = await adminClient.from("user_roles").delete().eq("user_id", uid);
+      if (delRoleErr) {
+        if (!isExistingUser) {
+          await adminClient.from("profiles").delete().eq("id", uid);
+          await adminClient.auth.admin.deleteUser(uid);
+        }
+        return Response.json({ error: `Role cleanup failed: ${delRoleErr.message}` }, { status: 400, headers: corsHeaders });
+      }
+
+      const { error: roleErr } = await adminClient.from("user_roles").insert({ user_id: uid, role });
+      if (roleErr) {
+        if (!isExistingUser) {
+          await adminClient.from("profiles").delete().eq("id", uid);
+          await adminClient.auth.admin.deleteUser(uid);
+        }
+        return Response.json({ error: `Role assignment failed: ${roleErr.message}` }, { status: 400, headers: corsHeaders });
+      }
 
       return Response.json({
         user: { id: uid, name: name.trim(), email, role, studentClass, rollNo },
@@ -105,11 +150,10 @@ Deno.serve(async (req) => {
     if (action === "deleteUser") {
       const { userId } = payload;
 
-      if (!["super_admin", "staff"].includes(callerRole)) {
+      if (!["super_admin", "staff"].includes(callerRole ?? "")) {
         return Response.json({ error: "Insufficient permissions" }, { status: 403, headers: corsHeaders });
       }
 
-      // Staff can only delete students
       if (callerRole === "staff") {
         const targetRole = await getCallerRole(adminClient, userId);
         if (targetRole !== "student") {
@@ -119,7 +163,7 @@ Deno.serve(async (req) => {
 
       const { error: delErr } = await adminClient.auth.admin.deleteUser(userId);
       if (delErr) {
-        return Response.json({ error: delErr.message }, { status: 400, headers: corsHeaders });
+        return Response.json({ error: `User deletion failed: ${delErr.message}` }, { status: 400, headers: corsHeaders });
       }
       return Response.json({ ok: true }, { headers: corsHeaders });
     }
@@ -132,9 +176,15 @@ Deno.serve(async (req) => {
         return Response.json({ error: "Only super_admin can change roles" }, { status: 403, headers: corsHeaders });
       }
 
-      // Replace all roles for this user
-      await adminClient.from("user_roles").delete().eq("user_id", userId);
-      await adminClient.from("user_roles").insert({ user_id: userId, role });
+      const { error: delRoleErr } = await adminClient.from("user_roles").delete().eq("user_id", userId);
+      if (delRoleErr) {
+        return Response.json({ error: `Role cleanup failed: ${delRoleErr.message}` }, { status: 400, headers: corsHeaders });
+      }
+
+      const { error: roleErr } = await adminClient.from("user_roles").insert({ user_id: userId, role });
+      if (roleErr) {
+        return Response.json({ error: `Role assignment failed: ${roleErr.message}` }, { status: 400, headers: corsHeaders });
+      }
 
       return Response.json({ ok: true }, { headers: corsHeaders });
     }
@@ -143,20 +193,26 @@ Deno.serve(async (req) => {
     if (action === "bulkCreateStudents") {
       const { rows } = payload; // Array<{ name, email, password?, studentClass?, rollNo? }>
 
-      if (!["super_admin", "staff"].includes(callerRole)) {
+      if (!["super_admin", "staff"].includes(callerRole ?? "")) {
         return Response.json({ error: "Insufficient permissions" }, { status: 403, headers: corsHeaders });
       }
 
       const created: Record<string, unknown>[] = [];
+      const updated: Record<string, unknown>[] = [];
+      const skipped: Record<string, unknown>[] = [];
       const errors: Record<string, unknown>[] = [];
 
       for (let i = 0; i < rows.length; i++) {
         const r = rows[i];
+        const rowNum = i + 2;
+
         if (!r.name || !r.email) {
-          errors.push({ row: i + 2, email: r.email, error: "Missing name or email" });
+          errors.push({ row: rowNum, email: r.email, error: "Missing name or email" });
           continue;
         }
 
+        let uid = "";
+        let isNewUser = false;
         const pass = r.password?.trim() || "student123";
         const { data: u, error: e } = await adminClient.auth.admin.createUser({
           email: r.email.trim(),
@@ -165,46 +221,104 @@ Deno.serve(async (req) => {
           user_metadata: { name: r.name.trim() },
         });
 
-        if (e || !u.user) {
-          errors.push({ row: i + 2, email: r.email, error: e?.message ?? "Failed" });
-          continue;
+        if (e || !u?.user) {
+          let existingId = "";
+          const { data: existingProfile } = await adminClient.from("profiles").select("id, name, email, class, roll_no").eq("email", r.email.trim()).maybeSingle();
+          if (existingProfile) {
+            existingId = existingProfile.id;
+
+            const newClass = r.studentClass ?? r.class ?? null;
+            const newRollNo = r.rollNo ?? null;
+            if (existingProfile.name === r.name.trim() &&
+                (existingProfile.class ?? null) === newClass &&
+                (existingProfile.roll_no ?? null) === newRollNo) {
+              skipped.push({ row: rowNum, email: r.email.trim() });
+              continue;
+            }
+          } else {
+            const { data: userList } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+            const foundAuthUser = userList?.users?.find(usr => usr.email?.toLowerCase() === r.email.trim().toLowerCase());
+            if (foundAuthUser) existingId = foundAuthUser.id;
+          }
+
+          if (existingId) {
+            uid = existingId;
+            isNewUser = false;
+          } else {
+            errors.push({ row: rowNum, email: r.email, error: e?.message ?? "Auth creation failed" });
+            continue;
+          }
+        } else {
+          uid = u.user.id;
+          isNewUser = true;
         }
 
-        const uid = u.user.id;
-        const avatar = r.name.trim().split(" ").map((p: string) => p[0]).join("").toUpperCase().slice(0, 2);
-
-        await adminClient.from("profiles").upsert({
+        const { error: profileErr } = await adminClient.from("profiles").upsert({
           id: uid,
           name: r.name.trim(),
           email: r.email.trim(),
-          student_class: r.studentClass ?? null,
+          class: r.studentClass ?? r.class ?? null,
           roll_no: r.rollNo ?? null,
-          avatar,
+          must_reset_password: true,
         });
 
-        await adminClient.from("user_roles").delete().eq("user_id", uid);
-        await adminClient.from("user_roles").insert({ user_id: uid, role: "student" });
+        if (profileErr) {
+          if (isNewUser) await adminClient.auth.admin.deleteUser(uid);
+          errors.push({ row: rowNum, email: r.email, error: `Profile: ${profileErr.message}` });
+          continue;
+        }
 
-        created.push({ id: uid, name: r.name.trim(), email: r.email.trim(), role: "student" });
+        const { error: delRoleErr } = await adminClient.from("user_roles").delete().eq("user_id", uid);
+        if (delRoleErr) {
+          if (isNewUser) {
+            await adminClient.from("profiles").delete().eq("id", uid);
+            await adminClient.auth.admin.deleteUser(uid);
+          }
+          errors.push({ row: rowNum, email: r.email, error: `Role cleanup: ${delRoleErr.message}` });
+          continue;
+        }
+
+        const { error: roleErr } = await adminClient.from("user_roles").insert({ user_id: uid, role: "student" });
+
+        if (roleErr) {
+          if (isNewUser) {
+            await adminClient.from("profiles").delete().eq("id", uid);
+            await adminClient.auth.admin.deleteUser(uid);
+          }
+          errors.push({ row: rowNum, email: r.email, error: `Role: ${roleErr.message}` });
+          continue;
+        }
+
+        const result = { id: uid, name: r.name.trim(), email: r.email.trim(), role: "student" };
+        if (isNewUser) {
+          created.push(result);
+        } else {
+          updated.push(result);
+        }
       }
 
-      return Response.json({ created, errors }, { headers: corsHeaders });
+      return Response.json({ created, updated, skipped, errors }, { headers: corsHeaders });
     }
 
     // ── listUsers ─────────────────────────────────────────────
     if (action === "listUsers") {
-      if (!["super_admin", "staff"].includes(callerRole)) {
+      if (!["super_admin", "staff"].includes(callerRole ?? "")) {
         return Response.json({ error: "Insufficient permissions" }, { status: 403, headers: corsHeaders });
       }
 
-      // Get profiles with their roles
-      const { data: profiles } = await adminClient
+      const { data: profiles, error: profilesErr } = await adminClient
         .from("profiles")
-        .select("id, name, email, student_class, roll_no, created_at");
+        .select("id, name, email, class, roll_no, created_at");
+      if (profilesErr) {
+        return Response.json({ error: `Profiles query failed: ${profilesErr.message}` }, { status: 500, headers: corsHeaders });
+      }
 
-      const { data: roleRows } = await adminClient
+      const { data: roleRows, error: rolesErr } = await adminClient
         .from("user_roles")
         .select("user_id, role");
+      if (rolesErr) {
+        return Response.json({ error: `Roles query failed: ${rolesErr.message}` }, { status: 500, headers: corsHeaders });
+      }
 
       const roleMap: Record<string, string> = {};
       for (const r of roleRows ?? []) {
@@ -214,18 +328,17 @@ Deno.serve(async (req) => {
         }
       }
 
-      const users = (profiles ?? []).map((p: { id: string, name: string, email: string, student_class: string, roll_no: string, created_at: string }) => ({
+      const users = (profiles ?? []).map((p: { id: string, name: string, email: string, class: string, roll_no: string, created_at: string }) => ({
         id: p.id,
         name: p.name,
         email: p.email,
-        role: roleMap[p.id] ?? "student",
-        studentClass: p.student_class,
+        role: roleMap[p.id] ?? null,
+        studentClass: p.class,
         rollNo: p.roll_no,
         createdAt: p.created_at,
       }));
 
-      // Staff only sees students
-      const filtered = callerRole === "staff" ? users.filter((u: { role: string }) => u.role === "student") : users;
+      const filtered = callerRole === "staff" ? users.filter((u: { role: string | null }) => u.role === "student") : users;
 
       return Response.json({ users: filtered }, { headers: corsHeaders });
     }
@@ -238,4 +351,3 @@ Deno.serve(async (req) => {
     });
   }
 });
- 

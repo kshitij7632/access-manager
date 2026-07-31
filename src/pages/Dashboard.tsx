@@ -63,9 +63,11 @@ const Dashboard = () => {
   const climber = [...movements].sort((a, b) => b.rankDelta - a.rankDelta || b.avgDelta - a.avgDelta)[0];
   const mostImproved = [...movements].sort((a, b) => b.avgDelta - a.avgDelta)[0];
 
+  if (!climber || !mostImproved) return null;
+
   // Captain performance: rank of the winning team's captain in individual board
-  const captainStudent = getStudent(winner.team.captainId);
-  const captainRow = ilb.find(r => r.student.id === captainStudent.id);
+  const captainStudent = winner.team.captainId ? getStudent(winner.team.captainId) : null;
+  const captainRow = captainStudent ? ilb.find(r => r.student.id === captainStudent.id) : null;
 
   return (
     <div>
@@ -198,7 +200,7 @@ const Dashboard = () => {
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-accent font-bold">
               <Crown className="size-3" /> Captain Watch
             </div>
-            <div className="font-display text-2xl mt-3 text-foreground truncate">{captainStudent.name}</div>
+            <div className="font-display text-2xl mt-3 text-foreground truncate">{captainStudent?.name ?? "No Captain"}</div>
             <div className="text-xs text-muted-foreground">{winner.team.name} · Captain</div>
             <div className="mt-3 flex items-baseline gap-2">
               <span className="font-mono-stat text-3xl text-accent">{captainRow?.marks ?? 0}</span>

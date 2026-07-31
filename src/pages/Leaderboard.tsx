@@ -58,7 +58,7 @@ const Leaderboard = () => {
   const tlb = teamLeaderboard(activeExamId);
   const prevIlb = prevExam ? individualLeaderboard(prevExam.id) : null;
   const prevTlb = prevExam ? teamLeaderboard(prevExam.id) : null;
-  const exam = exams.find(e => e.id === activeExamId)!;
+  const exam = exams.find(e => e.id === activeExamId) ?? exams[0];
 
   const podium = tlb.slice(0, 3);
   const restTeams = tlb.slice(3);
@@ -72,16 +72,20 @@ const Leaderboard = () => {
         title="Leaderboard"
         description="Switch between team and individual ranks. Pick any exam to rewind the action."
         action={
-          <Select value={activeExamId} onValueChange={setExamId}>
+          <Select value={activeExamId || undefined} onValueChange={setExamId}>
             <SelectTrigger className="w-56 bg-card border-border">
-              <SelectValue />
+              <SelectValue placeholder="Select an exam…" />
             </SelectTrigger>
             <SelectContent>
-              {exams.map(e => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.name} · {e.subject}
-                </SelectItem>
-              ))}
+              {exams.length === 0 ? (
+                <SelectItem value="placeholder-no-exams" disabled>No exams available</SelectItem>
+              ) : (
+                exams.map(e => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.name} · {e.subject}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         }
@@ -238,7 +242,7 @@ const Leaderboard = () => {
                   </div>
                   <div className="text-right">
                     <span className="font-mono-stat text-2xl text-accent">{row.marks}</span>
-                    <span className="text-muted-foreground text-sm ml-1">/{exam.totalMarks}</span>
+                    <span className="text-muted-foreground text-sm ml-1">/{exam?.totalMarks ?? 100}</span>
                   </div>
                 </div>
               );

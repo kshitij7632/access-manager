@@ -37,14 +37,16 @@ $$;
 
 -- ── 1. profiles ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.profiles (
-  id                   uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  name                 text NOT NULL DEFAULT '',
-  email                text,
-  student_class        text,
-  roll_no              text,
-  avatar               text,
-  must_change_password boolean NOT NULL DEFAULT true,
-  created_at           timestamptz NOT NULL DEFAULT now()
+  id                  uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name                text NOT NULL DEFAULT '',
+  email               text,
+  class               text,
+  roll_no             text,
+  branch              text,
+  batch               text,
+  avatar_url          text,
+  must_reset_password boolean NOT NULL DEFAULT true,
+  created_at          timestamptz NOT NULL DEFAULT now()
 );
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -111,9 +113,9 @@ CREATE POLICY "teams write staff" ON public.teams
 
 -- ── 4. team_members ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.team_members (
-  team_id  uuid NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
-  user_id  uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  PRIMARY KEY (team_id, user_id)
+  team_id    uuid NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+  student_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  PRIMARY KEY (team_id, student_id)
 );
 
 ALTER TABLE public.team_members ENABLE ROW LEVEL SECURITY;
@@ -134,7 +136,7 @@ CREATE TABLE IF NOT EXISTS public.exams (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name         text NOT NULL,
   subject      text NOT NULL DEFAULT '',
-  date         date NOT NULL,
+  exam_date    date NOT NULL,
   total_marks  integer NOT NULL DEFAULT 100,
   created_by   uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at   timestamptz NOT NULL DEFAULT now()
@@ -181,9 +183,8 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   kind       text NOT NULL,
   title      text NOT NULL,
   body       text,
-  audience   text NOT NULL DEFAULT 'all',        -- 'all' | 'user'
   user_id    uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-  read       boolean NOT NULL DEFAULT false,
+  read_at    timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -195,12 +196,12 @@ DROP POLICY IF EXISTS "notif insert staff"          ON public.notifications;
 
 CREATE POLICY "notif read own or broadcast" ON public.notifications
   FOR SELECT TO authenticated
-  USING (audience = 'all' OR user_id = auth.uid());
+  USING (user_id IS NULL OR user_id = auth.uid());
 
 CREATE POLICY "notif update own" ON public.notifications
   FOR UPDATE TO authenticated
-  USING (audience = 'all' OR user_id = auth.uid())
-  WITH CHECK (audience = 'all' OR user_id = auth.uid());
+  USING (user_id IS NULL OR user_id = auth.uid())
+  WITH CHECK (user_id IS NULL OR user_id = auth.uid());
 
 CREATE POLICY "notif insert staff" ON public.notifications
   FOR INSERT TO authenticated
@@ -224,7 +225,7 @@ CREATE TABLE IF NOT EXISTS public.audit_log (
 ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "audit read admin" ON public.audit_log;
-DROP POLICY IF EXISTS "audit insert any" ON public.audit_log;
+DROP POLICY IF EXISTS "audit insert staff" ON public.audit_log;
 
 CREATE POLICY "audit read admin" ON public.audit_log
   FOR SELECT TO authenticated
@@ -232,9 +233,11 @@ CREATE POLICY "audit read admin" ON public.audit_log
     public.has_role(auth.uid(), 'super_admin') OR public.has_role(auth.uid(), 'staff')
   );
 
-CREATE POLICY "audit insert any" ON public.audit_log
+CREATE POLICY "audit insert staff" ON public.audit_log
   FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = actor_id OR actor_id IS NULL);
+  WITH CHECK (
+    public.has_role(auth.uid(), 'super_admin') OR public.has_role(auth.uid(), 'staff')
+  );
 
 -- ── 9. Grants (Data API access) ─────────────────────────────
 GRANT SELECT ON public.profiles      TO anon, authenticated;
@@ -266,6 +269,9 @@ GRANT ALL    ON public.notifications         TO service_role;
 
 GRANT SELECT, INSERT ON public.audit_log     TO authenticated;
 GRANT ALL            ON public.audit_log     TO service_role;
+
+REVOKE EXECUTE ON FUNCTION public.has_role FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.has_role TO authenticated, service_role;
 
 -- ── 10. Auto-create profile on signup ────────────────────────
 CREATE OR REPLACE FUNCTION public.handle_new_user()

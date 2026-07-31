@@ -13,7 +13,7 @@ export const WinnerPanel = ({ examId }: { examId: string }) => {
 
   // Empty state if nothing scored
   const hasScores = ilb.some(r => r.marks > 0);
-  if (!hasScores) {
+  if (!hasScores || !winner || !topper || !winner.team || !topper.student) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card/50 p-8 text-center">
         <Sparkles className="size-6 text-muted-foreground mx-auto" />

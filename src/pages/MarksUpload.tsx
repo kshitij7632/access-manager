@@ -18,10 +18,16 @@ import { useRef } from "react";
 const MarksUpload = () => {
   const { exams, marks, students, getTeam, upsertMarks } = useAppState();
   const [searchParams] = useSearchParams();
-  const initialExam = searchParams.get("exam") || exams[exams.length - 1]?.id || "";
+  const initialExam = searchParams.get("exam") || (exams.length > 0 ? exams[exams.length - 1].id : "");
   const [examId, setExamId] = useState<string>(initialExam);
   const [pasteText, setPasteText] = useState("");
   const [showResults, setShowResults] = useState(false);
+
+  useEffect(() => {
+    if (!examId && exams.length > 0) {
+      setExamId(exams[exams.length - 1].id);
+    }
+  }, [exams, examId]);
 
   const selectedExam = exams.find(e => e.id === examId);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -45,16 +51,20 @@ const MarksUpload = () => {
       let matched = 0; let skipped = 0;
       const next = [...rows];
       for (const r of csvRows) {
-        const num = Number(r[marksKey!]);
+        const num = marksKey ? Number(r[marksKey]) : NaN;
         if (!Number.isFinite(num)) { skipped++; continue; }
         let student;
-        if (idKey && r[idKey]) student = students.find(s => s.id.toLowerCase() === r[idKey!].toLowerCase());
+        if (idKey && r[idKey]) {
+          const val = String(r[idKey]).toLowerCase();
+          student = students.find(s => s.id.toLowerCase() === val);
+        }
         if (!student && nameKey && r[nameKey]) {
-          const q = r[nameKey!].toLowerCase();
+          const q = String(r[nameKey]).toLowerCase();
           student = students.find(s => s.name.toLowerCase() === q) || students.find(s => s.name.toLowerCase().includes(q));
         }
         if (!student) { skipped++; continue; }
-        const idx = next.findIndex(rw => rw.studentId === student!.id);
+        const matchedStudent = student;
+        const idx = next.findIndex(rw => rw.studentId === matchedStudent.id);
         if (idx !== -1) {
           next[idx] = { ...next[idx], value: String(Math.max(0, Math.min(total, num))) };
           matched++;
@@ -148,12 +158,16 @@ const MarksUpload = () => {
         <div className="lg:col-span-1 space-y-5">
           <div className="rounded-2xl border border-border bg-card p-5">
             <Label className="text-[10px] uppercase tracking-[0.25em] text-accent font-bold">Exam</Label>
-            <Select value={examId} onValueChange={setExamId}>
-              <SelectTrigger className="mt-2"><SelectValue /></SelectTrigger>
+            <Select value={examId || undefined} onValueChange={setExamId}>
+              <SelectTrigger className="mt-2"><SelectValue placeholder="Select an exam…" /></SelectTrigger>
               <SelectContent className="bg-popover z-50">
-                {exams.map(e => (
-                  <SelectItem key={e.id} value={e.id}>{e.name} · {e.subject}</SelectItem>
-                ))}
+                {exams.length === 0 ? (
+                  <SelectItem value="placeholder-no-exams" disabled>No exams available</SelectItem>
+                ) : (
+                  exams.map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.name} · {e.subject}</SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
             {selectedExam && (

@@ -6,6 +6,7 @@ import type { Exam, Mark, Student, Team } from "@/data/mock";
 import { useAuth } from "@/context/AuthContext";
 import { useAudit } from "@/context/AuditContext";
 import { useNotifications } from "@/context/NotificationsContext";
+import { toast } from "sonner";
 
 const FALLBACK_TEAM_COLORS = ["226 90% 55%", "48 100% 55%", "12 85% 58%", "280 70% 60%", "160 70% 45%", "340 80% 60%"];
 
@@ -14,6 +15,7 @@ const initialsOf = (name: string) =>
 
 type AppStateValue = {
   loading: boolean;
+  error: string | null;
   teams: Team[];
   students: Student[];
   exams: Exam[];
@@ -81,19 +83,52 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const [exams, setExams] = useState<Exam[]>([]);
   const [marks, setMarks] = useState<Mark[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const prevRanksRef = useRef<Record<string, Record<string, number>>>({});
 
   const loadAll = useCallback(async () => {
-    // Fire in parallel; tolerate any single failure.
+    try {
+      setError(null);
+      // Fire in parallel; tolerate any single failure.
     const [teamsRes, teamMembersRes, profilesRes, rolesRes, examsRes, marksRes] = await Promise.all([
       supabase.from("teams").select("*"),
-      supabase.from("team_members").select("team_id, user_id"),
-      supabase.from("profiles").select("id, name, email, student_class, roll_no"),
+      supabase.from("team_members").select("team_id, student_id"),
+      supabase.from("profiles").select("id, name, email, class, roll_no, branch, batch"),
       supabase.from("user_roles").select("user_id, role"),
-      supabase.from("exams").select("*").order("date", { ascending: true }),
+      supabase.from("exams").select("*").order("exam_date", { ascending: true }),
       supabase.from("marks").select("exam_id, student_id, marks"),
     ]);
+
+    if (profilesRes.error) {
+      console.error("profilesRes query error:", profilesRes.error);
+      throw profilesRes.error;
+    }
+
+    if (rolesRes.error) {
+      console.error("rolesRes query error:", rolesRes.error);
+      throw rolesRes.error;
+    }
+
+    if (teamsRes.error) {
+      console.error("teamsRes query error:", teamsRes.error);
+      throw teamsRes.error;
+    }
+
+    if (teamMembersRes.error) {
+      console.error("teamMembersRes query error:", teamMembersRes.error);
+      throw teamMembersRes.error;
+    }
+
+    if (examsRes.error) {
+      console.error("examsRes query error:", examsRes.error);
+      throw examsRes.error;
+    }
+
+    if (marksRes.error) {
+      console.error("marksRes query error:", marksRes.error);
+      throw marksRes.error;
+    }
 
     const teamRows = (teamsRes.data ?? []) as any[];
     const memberRows = (teamMembersRes.data ?? []) as any[];
@@ -115,19 +150,17 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     });
 
     const teamOf = new Map<string, string>();
-    memberRows.forEach(r => { teamOf.set(r.user_id, r.team_id); });
+    memberRows.forEach(r => { teamOf.set(r.student_id ?? r.user_id, r.team_id); });
 
-    // Filter to rows where role = 'student'
+    // Inner join: filter to profiles where user_roles has role = 'student'
     const studentUserIds = new Set(roleRows.filter((r: any) => r.role === "student").map((r: any) => r.user_id));
-    const studentProfiles = roleRows.length > 0
-      ? profileRows.filter((p: any) => studentUserIds.has(p.id))
-      : profileRows;
+    const studentProfiles = profileRows.filter((p: any) => studentUserIds.has(p.id));
 
     const nextStudents: Student[] = studentProfiles.map(p => ({
       id: p.id,
       name: p.name ?? p.email ?? "Student",
       batch: p.batch ?? "—",
-      branch: p.branch ?? p.student_class ?? "—",
+      branch: p.branch ?? p.class ?? "—",
       teamId: teamOf.get(p.id) ?? EMPTY_TEAM.id,
       avatar: initialsOf(p.name ?? p.email ?? "S"),
     }));
@@ -136,7 +169,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       id: e.id,
       name: e.name,
       subject: e.subject ?? "",
-      date: e.date,
+      date: e.exam_date ?? e.date ?? "",
       totalMarks: e.total_marks ?? e.totalMarks ?? 100,
     }));
 
@@ -159,7 +192,15 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     });
     prevRanksRef.current = initRanks;
 
-    setLoading(false);
+      setError(null);
+      setLoading(false);
+    } catch (err: any) {
+      console.error("loadAll failed", err);
+      const errMsg = err.message || "Failed to load application data";
+      setError(errMsg);
+      toast.error("Failed to load application data", { description: errMsg });
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -191,6 +232,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
 
   const value = useMemo<AppStateValue>(() => ({
     loading,
+    error,
     teams,
     students,
     exams,
@@ -213,18 +255,19 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     addExam: async (e) => {
       const { data, error } = await supabase
         .from("exams")
-        .insert({ name: e.name, subject: e.subject, date: e.date, total_marks: e.totalMarks })
+        .insert({ name: e.name, subject: e.subject, exam_date: e.date, total_marks: e.totalMarks })
         .select()
         .single();
       if (error || !data) {
         console.error("addExam failed", error);
+        toast.error("Failed to create exam", { description: error?.message || "Unknown error" });
         return null;
       }
       const created: Exam = {
         id: (data as any).id,
         name: (data as any).name,
         subject: (data as any).subject ?? "",
-        date: (data as any).date,
+        date: (data as any).exam_date ?? e.date,
         totalMarks: (data as any).total_marks ?? e.totalMarks,
       };
       setExams(prev => [...prev, created]);
@@ -248,7 +291,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.from("marks").upsert(rows, { onConflict: "exam_id,student_id" });
       if (error) {
         console.error("upsertMarks failed", error);
-        return;
+        toast.error("Failed to save marks", { description: error.message });
+        throw error;
       }
 
       // Optimistic local merge + notifications.

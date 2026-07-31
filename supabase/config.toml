@@ -2,3 +2,6 @@ project_id = "tiucewmkpsplbkhxyrxv"
 
 [functions.admin-users]
 verify_jwt = false
+
+[functions.admin-user-ops]
+verify_jwt = false

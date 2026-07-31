@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export type Role = "super_admin" | "staff" | "student";
 
@@ -8,7 +10,7 @@ export type AuthUser = {
   id: string;
   name: string;
   email: string;
-  role: Role;
+  role: Role | null;
   studentClass?: string;
   rollNo?: string;
   mustChangePassword?: boolean;
@@ -21,6 +23,7 @@ type Result = { ok: boolean; error?: string; mustReset?: boolean };
 type AuthValue = {
   user: AuthUser | null;
   loading: boolean;
+  authError: string | null;
   users: AppUser[];
   refreshUsers: () => Promise<void>;
   login: (email: string, password: string) => Promise<Result>;
@@ -31,23 +34,41 @@ type AuthValue = {
   updateUserRole: (id: string, role: Role) => Promise<{ ok: boolean; error?: string }>;
   updateProfile: (input: { name?: string; email?: string }) => Promise<{ ok: boolean; error?: string }>;
   changePassword: (current: string, next: string) => Promise<{ ok: boolean; error?: string }>;
-  bulkCreateStudents: (rows: { name: string; email?: string; password?: string; studentClass?: string; rollNo?: string }[]) => Promise<{ created: AuthUser[]; errors: { row: number; email?: string; error: string }[] }>;
+  bulkCreateStudents: (rows: { name: string; email?: string; password?: string; studentClass?: string; rollNo?: string }[]) => Promise<{ created: AuthUser[]; updated: AuthUser[]; skipped: { row: number; email?: string }[]; errors: { row: number; email?: string; error: string }[] }>;
 };
 
 const AuthContext = createContext<AuthValue | null>(null);
 
-async function loadProfile(userId: string, email: string): Promise<AuthUser | null> {
-  const [{ data: profile }, { data: roleRows }] = await Promise.all([
-    supabase.from("profiles").select("id, name, email, student_class, roll_no, must_change_password").eq("id", userId).maybeSingle(),
+/**
+ * Resolve the highest-priority role from a list of role rows.
+ * Returns null if the user has NO role assigned — never defaults to "student".
+ */
+function resolveRole(roleRows: { role: string }[]): Role | null {
+  const roles = roleRows.map((r) => r.role as Role);
+  if (roles.includes("super_admin")) return "super_admin";
+  if (roles.includes("staff")) return "staff";
+  if (roles.includes("student")) return "student";
+  return null; // No role assigned — caller must handle this
+}
+
+async function loadProfile(userId: string, email: string): Promise<AuthUser> {
+  const [profilesRes, rolesRes] = await Promise.all([
+    supabase.from("profiles").select("id, name, email, class, roll_no, must_reset_password").eq("id", userId).maybeSingle(),
     supabase.from("user_roles").select("role").eq("user_id", userId),
   ]);
 
-  const roles = (roleRows ?? []).map((r: any) => r.role as Role);
-  const role: Role = roles.includes("super_admin")
-    ? "super_admin"
-    : roles.includes("staff")
-    ? "staff"
-    : "student";
+  if (profilesRes.error) {
+    console.error("loadProfile profiles query error:", profilesRes.error);
+    throw new Error(`Failed to load profile: ${profilesRes.error.message}`);
+  }
+
+  if (rolesRes.error) {
+    console.error("loadProfile roles query error:", rolesRes.error);
+    throw new Error(`Failed to load user role: ${rolesRes.error.message}`);
+  }
+
+  const profile = profilesRes.data;
+  const role = resolveRole(rolesRes.data ?? []);
 
   const p: any = profile ?? {};
   return {
@@ -55,31 +76,45 @@ async function loadProfile(userId: string, email: string): Promise<AuthUser | nu
     email: p.email ?? email,
     name: p.name ?? email.split("@")[0],
     role,
-    studentClass: p.student_class ?? undefined,
+    studentClass: p.class ?? undefined,
     rollNo: p.roll_no ?? undefined,
-    mustChangePassword: p.must_change_password ?? false,
+    mustChangePassword: p.must_reset_password ?? false,
   };
 }
 
 async function fetchAllUsers(): Promise<AppUser[]> {
-  const [{ data: profiles }, { data: roles }] = await Promise.all([
-    supabase.from("profiles").select("id, name, email, student_class, roll_no, must_change_password, created_at"),
+  const [profilesRes, rolesRes] = await Promise.all([
+    supabase.from("profiles").select("id, name, email, class, roll_no, must_reset_password, created_at"),
     supabase.from("user_roles").select("user_id, role"),
   ]);
+
+  if (profilesRes.error) {
+    console.error("fetchAllUsers profiles query error:", profilesRes.error);
+    throw new Error(`Failed to load users: ${profilesRes.error.message}`);
+  }
+
+  if (rolesRes.error) {
+    console.error("fetchAllUsers roles query error:", rolesRes.error);
+    throw new Error(`Failed to load user roles: ${rolesRes.error.message}`);
+  }
+
+  const profiles = profilesRes.data ?? [];
+  const roles = rolesRes.data ?? [];
+
   const roleByUser = new Map<string, Role>();
-  (roles ?? []).forEach((r: any) => {
+  roles.forEach((r: any) => {
     const cur = roleByUser.get(r.user_id);
     const priority = (x?: Role) => (x === "super_admin" ? 3 : x === "staff" ? 2 : x === "student" ? 1 : 0);
     if (priority(r.role) > priority(cur)) roleByUser.set(r.user_id, r.role);
   });
-  return (profiles ?? []).map((p: any) => ({
+  return profiles.map((p: any) => ({
     id: p.id,
     name: p.name ?? p.email ?? "User",
     email: p.email ?? "",
-    role: roleByUser.get(p.id) ?? "student",
-    studentClass: p.student_class ?? undefined,
+    role: roleByUser.get(p.id) ?? null, // No fallback — null means no role assigned
+    studentClass: p.class ?? undefined,
     rollNo: p.roll_no ?? undefined,
-    mustChangePassword: p.must_change_password ?? false,
+    mustChangePassword: p.must_reset_password ?? false,
     createdAt: p.created_at ?? undefined,
   }));
 }
@@ -98,19 +133,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
+
+  const invalidateAllCaches = useCallback(async () => {
+    await queryClient.invalidateQueries();
+  }, [queryClient]);
 
   const refreshUsers = useCallback(async () => {
-    try { setUsers(await fetchAllUsers()); } catch (e) { console.error("fetchAllUsers", e); }
+    try {
+      setUsers(await fetchAllUsers());
+    } catch (e: any) {
+      console.error("fetchAllUsers error:", e);
+      toast.error("Failed to load users", { description: e.message || "Database query failed" });
+    }
   }, []);
 
   const hydrate = useCallback(async (session: Session | null) => {
-    if (!session?.user) { setUser(null); setUsers([]); return; }
+    if (!session?.user) { setUser(null); setUsers([]); setAuthError(null); return; }
     try {
+      setAuthError(null);
       const u = await loadProfile(session.user.id, session.user.email ?? "");
       setUser(u);
       void refreshUsers();
-    } catch (e) {
+    } catch (e: any) {
       console.error("loadProfile failed", e);
+      const msg = e.message || "Failed to load user profile";
+      setAuthError(msg);
+      toast.error("Authentication error", { description: msg });
+      // Do NOT create a fake user with role: "student".
+      // Set user to null so RequireAuth can show the error.
       setUser(null);
     }
   }, [refreshUsers]);
@@ -129,11 +182,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error) return { ok: false, error: error.message };
     if (data.session) {
-      const u = await loadProfile(data.session.user.id, data.session.user.email ?? "");
-      setUser(u);
-      void refreshUsers();
-      if (u?.mustChangePassword) {
-        return { ok: true, mustReset: true };
+      try {
+        const u = await loadProfile(data.session.user.id, data.session.user.email ?? "");
+        setUser(u);
+        void refreshUsers();
+        if (u?.mustChangePassword) {
+          return { ok: true, mustReset: true };
+        }
+      } catch (err: any) {
+        console.error("Login loadProfile error:", err);
+        return { ok: false, error: err.message || "Failed to load user profile" };
       }
     }
     return { ok: true };
@@ -143,6 +201,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
     setUser(null);
     setUsers([]);
+    setAuthError(null);
   };
 
   const updateProfile: AuthValue["updateProfile"] = async ({ name, email }) => {
@@ -170,17 +229,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { error } = await supabase.auth.updateUser({ password: next });
     if (error) return { ok: false, error: error.message };
 
-    // Set must_change_password = false in profiles table
-    const { error: pErr } = await supabase.from("profiles").update({ must_change_password: false }).eq("id", user.id);
-    if (pErr) console.error("Error clearing must_change_password flag:", pErr);
+    // Set must_reset_password = false in profiles table
+    const { error: pErr } = await supabase.from("profiles").update({ must_reset_password: false }).eq("id", user.id);
+    if (pErr) {
+      console.error("Error clearing must_reset_password flag:", pErr);
+      return { ok: false, error: pErr.message };
+    }
 
     setUser({ ...user, mustChangePassword: false });
+
+    // Invalidate all caches after password change
+    await invalidateAllCaches();
+    await refreshUsers();
+
     return { ok: true };
   };
 
   const adminCreateUser: AuthValue["adminCreateUser"] = async (input) => {
     const res = await invokeAdmin("create", input);
     if (!res.ok) return { ok: false, error: res.error };
+    await invalidateAllCaches();
     await refreshUsers();
     const created = (res.data as any)?.user as AuthUser | undefined;
     return { ok: true, user: created };
@@ -189,6 +257,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const adminResetPassword: AuthValue["adminResetPassword"] = async (id) => {
     const res = await invokeAdmin("reset_password", { id });
     if (!res.ok) return { ok: false, error: res.error };
+    await invalidateAllCaches();
     await refreshUsers();
     return { ok: true };
   };
@@ -196,6 +265,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const deleteUser: AuthValue["deleteUser"] = async (id) => {
     const res = await invokeAdmin("delete", { id });
     if (!res.ok) return { ok: false, error: res.error };
+    await invalidateAllCaches();
     await refreshUsers();
     return { ok: true };
   };
@@ -203,22 +273,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const updateUserRole: AuthValue["updateUserRole"] = async (id, role) => {
     const res = await invokeAdmin("set_role", { id, role });
     if (!res.ok) return { ok: false, error: res.error };
+    await invalidateAllCaches();
     await refreshUsers();
     return { ok: true };
   };
 
   const bulkCreateStudents: AuthValue["bulkCreateStudents"] = async (rows) => {
     const res = await invokeAdmin("bulk_create_students", { rows });
-    if (!res.ok) return { created: [], errors: [{ row: 0, error: res.error ?? "Failed" }] };
+    if (!res.ok) return { created: [], updated: [], skipped: [], errors: [{ row: 0, error: res.error ?? "Failed" }] };
+    await invalidateAllCaches();
     await refreshUsers();
     const d = res.data as any;
-    return { created: d?.created ?? [], errors: d?.errors ?? [] };
+    return {
+      created: d?.created ?? [],
+      updated: d?.updated ?? [],
+      skipped: d?.skipped ?? [],
+      errors: d?.errors ?? [],
+    };
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user, loading, users,
+        user, loading, authError, users,
         refreshUsers,
         login, logout,
         adminCreateUser, adminResetPassword, deleteUser, updateUserRole,

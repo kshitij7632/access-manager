@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { useAppState } from "@/context/AppStateContext";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, AlertTriangle } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
 import { StudentImportDialog } from "@/components/StudentImportDialog";
@@ -13,8 +13,8 @@ import { UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 const Students = () => {
-  const { students, getTeam, studentOverall, individualLeaderboard, latestExamId, refresh: refreshAppState } = useAppState();
-  const { user, adminCreateUser } = useAuth();
+  const { students, getTeam, studentOverall, individualLeaderboard, latestExamId, refresh: refreshAppState, error: appError } = useAppState();
+  const { user, adminCreateUser, authError } = useAuth();
   const [q, setQ] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [name, setName] = useState("");
@@ -22,6 +22,8 @@ const Students = () => {
   const [password, setPassword] = useState("");
   const [studentClass, setStudentClass] = useState("");
   const [rollNo, setRollNo] = useState("");
+
+  const displayError = appError || authError;
 
   const canAdd = user?.role === "super_admin" || user?.role === "staff";
   const ilb = latestExamId ? individualLeaderboard(latestExamId) : [];
@@ -55,6 +57,15 @@ const Students = () => {
 
   return (
     <div className="px-4 md:px-10 py-8 md:py-12">
+      {displayError && (
+        <div className="mb-6 p-4 rounded-xl border border-destructive/40 bg-destructive/10 text-destructive flex items-center gap-3 text-sm font-semibold">
+          <AlertTriangle className="size-5 flex-shrink-0" />
+          <div>
+            <div className="font-bold">Failed to load data</div>
+            <div className="text-xs opacity-90">{displayError}</div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <PageHeader
           eyebrow="Roster"

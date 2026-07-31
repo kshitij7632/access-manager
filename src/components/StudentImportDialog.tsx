@@ -3,10 +3,11 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, FileText, Download, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Upload, FileText, Download, AlertCircle, CheckCircle2, RefreshCw, SkipForward } from "lucide-react";
 import { toast } from "sonner";
 import { parseCSVWithHeader, downloadCSV } from "@/lib/csv";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useAppState } from "@/context/AppStateContext";
 
 const SAMPLE = `name,email,password,class,rollNo
@@ -14,12 +15,21 @@ Aarav Kumar,aarav.k@scorebuzz.app,welcome123,10-A,12
 Priya Singh,priya.s@scorebuzz.app,welcome123,10-A,13
 Rohit Mehta,,welcome123,10-B,5`;
 
+type ImportResult = {
+  created: number;
+  updated: number;
+  skipped: { row: number; email?: string }[];
+  errors: { row: number; email?: string; error: string }[];
+};
+
 export const StudentImportDialog = ({ trigger, onSuccess }: { trigger?: React.ReactNode; onSuccess?: () => void }) => {
-  const { bulkCreateStudents } = useAuth();
+  const { bulkCreateStudents, refreshUsers } = useAuth();
   const { refresh: refreshAppState } = useAppState();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
-  const [result, setResult] = useState<{ created: number; errors: { row: number; email?: string; error: string }[] } | null>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const reset = () => { setText(""); setResult(null); };
@@ -41,17 +51,34 @@ export const StudentImportDialog = ({ trigger, onSuccess }: { trigger?: React.Re
       name: r.name,
       email: r.email || undefined,
       password: r.password || undefined,
-      studentClass: r.class || r.studentClass || undefined,
+      studentClass: r.class || undefined,
       rollNo: r.rollNo || r.roll || undefined,
     }));
-    const res = await bulkCreateStudents(mapped);
-    setResult({ created: res.created.length, errors: res.errors });
-    if (res.created.length) {
+
+    setImporting(true);
+    try {
+      const res = await bulkCreateStudents(mapped);
+      setResult({
+        created: res.created.length,
+        updated: res.updated.length,
+        skipped: res.skipped,
+        errors: res.errors,
+      });
+      await queryClient.invalidateQueries();
       await refreshAppState();
-      onSuccess?.();
-      toast.success(`Created ${res.created.length} student${res.created.length === 1 ? "" : "s"}`);
-    } else {
-      toast.error("No students created");
+      await refreshUsers();
+
+      const totalSuccess = res.created.length + res.updated.length;
+      if (totalSuccess > 0) {
+        onSuccess?.();
+        toast.success(`Import complete: ${res.created.length} created, ${res.updated.length} updated, ${res.skipped.length} skipped, ${res.errors.length} failed`);
+      } else if (res.skipped.length > 0 && res.errors.length === 0) {
+        toast.info(`All ${res.skipped.length} rows skipped (already up to date)`);
+      } else {
+        toast.error(`Import failed: ${res.errors.length} errors`);
+      }
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -102,21 +129,58 @@ export const StudentImportDialog = ({ trigger, onSuccess }: { trigger?: React.Re
 
           {result && (
             <div className="space-y-2">
+              <div className="flex items-center gap-4 text-sm font-semibold flex-wrap">
+                <span className="text-emerald-500 flex items-center gap-1">
+                  <CheckCircle2 className="size-3.5" /> Created: {result.created}
+                </span>
+                <span className="text-blue-500 flex items-center gap-1">
+                  <RefreshCw className="size-3.5" /> Updated: {result.updated}
+                </span>
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <SkipForward className="size-3.5" /> Skipped: {result.skipped.length}
+                </span>
+                <span className={result.errors.length > 0 ? "text-destructive" : "text-muted-foreground"}>
+                  Failed: {result.errors.length}
+                </span>
+              </div>
+
               {result.created > 0 && (
                 <div className="flex items-center gap-2 text-sm text-accent">
-                  <CheckCircle2 className="size-4" /> Created {result.created} student account{result.created === 1 ? "" : "s"}.
+                  <CheckCircle2 className="size-4" /> Created {result.created} new student account{result.created === 1 ? "" : "s"}.
                 </div>
               )}
+              {result.updated > 0 && (
+                <div className="flex items-center gap-2 text-sm text-blue-500">
+                  <RefreshCw className="size-4" /> Updated {result.updated} existing profile{result.updated === 1 ? "" : "s"}.
+                </div>
+              )}
+
+              {result.skipped.length > 0 && (
+                <div className="rounded-xl border border-muted bg-muted/30 p-3 max-h-28 overflow-y-auto">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm font-bold mb-2">
+                    <SkipForward className="size-4" /> {result.skipped.length} skipped (already up to date)
+                  </div>
+                  <ul className="text-xs space-y-1 text-muted-foreground">
+                    {result.skipped.map((s, i) => (
+                      <li key={i}>
+                        <span className="font-mono text-foreground">Row {s.row}</span>
+                        {s.email && <> · <span className="font-mono">{s.email}</span></>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {result.errors.length > 0 && (
                 <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-3 max-h-40 overflow-y-auto">
                   <div className="flex items-center gap-2 text-destructive text-sm font-bold mb-2">
-                    <AlertCircle className="size-4" /> {result.errors.length} row{result.errors.length === 1 ? "" : "s"} skipped
+                    <AlertCircle className="size-4" /> {result.errors.length} failed student{result.errors.length === 1 ? "" : "s"}
                   </div>
                   <ul className="text-xs space-y-1 text-muted-foreground">
-                    {result.errors.slice(0, 50).map((e, i) => (
+                    {result.errors.map((e, i) => (
                       <li key={i}>
                         <span className="font-mono text-foreground">Row {e.row}</span>
-                        {e.email && <> · <span className="font-mono">{e.email}</span></>} — {e.error}
+                        {e.email && <> · <span className="font-mono">{e.email}</span></>} — <span className="text-destructive font-medium">{e.error}</span>
                       </li>
                     ))}
                   </ul>
@@ -130,8 +194,8 @@ export const StudentImportDialog = ({ trigger, onSuccess }: { trigger?: React.Re
           {result ? (
             <Button onClick={() => setOpen(false)} className="bg-gradient-gold text-accent-foreground font-bold">Done</Button>
           ) : (
-            <Button onClick={handleImport} className="bg-gradient-gold text-accent-foreground font-bold">
-              <Upload className="size-4 mr-2" /> Import
+            <Button onClick={handleImport} disabled={importing} className="bg-gradient-gold text-accent-foreground font-bold">
+              <Upload className="size-4 mr-2" /> {importing ? "Importing…" : "Import"}
             </Button>
           )}
         </DialogFooter>

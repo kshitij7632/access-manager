@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 export type NotifKind = "exam" | "marks" | "rank" | "system";
 
@@ -27,12 +28,12 @@ const NotificationsContext = createContext<NotifValue | null>(null);
 
 const rowToNotif = (r: any): Notification => ({
   id: r.id,
-  kind: r.kind,
+  kind: r.kind as NotifKind,
   title: r.title,
   body: r.body ?? undefined,
-  at: r.created_at ?? r.at ?? new Date().toISOString(),
-  read: !!r.read,
-  audience: r.audience === "all" || !r.user_id ? "all" : { userId: r.user_id },
+  at: r.created_at ?? new Date().toISOString(),
+  read: !!r.read_at,
+  audience: !r.user_id ? "all" : { userId: r.user_id },
 });
 
 export const NotificationsProvider = ({ children }: { children: ReactNode }) => {
@@ -41,12 +42,17 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
 
   const load = useCallback(async () => {
     if (!user) { setNotifications([]); return; }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("notifications")
       .select("*")
-      .or(`audience.eq.all,user_id.eq.${user.id}`)
+      .or(`user_id.is.null,user_id.eq.${user.id}`)
       .order("created_at", { ascending: false })
       .limit(200);
+    if (error) {
+      console.error("notifications load error:", error);
+      toast.error("Failed to load notifications", { description: error.message });
+      return;
+    }
     setNotifications((data ?? []).map(rowToNotif));
   }, [user]);
 
@@ -65,12 +71,14 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
       kind: n.kind,
       title: n.title,
       body: n.body ?? null,
-      audience: n.audience === "all" ? "all" : "user",
       user_id: n.audience === "all" ? null : n.audience.userId,
-      read: false,
+      read_at: null,
     };
     const { error } = await supabase.from("notifications").insert(row);
-    if (error) console.error("notifications.insert", error);
+    if (error) {
+      console.error("notifications.insert error:", error);
+      toast.error("Failed to send notification", { description: error.message });
+    }
   }, []);
 
   const isVisible = (n: Notification, userId?: string) =>
@@ -84,7 +92,11 @@ export const NotificationsProvider = ({ children }: { children: ReactNode }) => 
     const ids = notifications.filter(n => isVisible(n, userId) && !n.read).map(n => n.id);
     if (ids.length === 0) return;
     setNotifications(prev => prev.map(n => (ids.includes(n.id) ? { ...n, read: true } : n)));
-    await supabase.from("notifications").update({ read: true }).in("id", ids);
+    const { error } = await supabase.from("notifications").update({ read_at: new Date().toISOString() }).in("id", ids);
+    if (error) {
+      console.error("notifications.markAllRead error:", error);
+      toast.error("Failed to mark notifications read", { description: error.message });
+    }
   }, [notifications]);
 
   const clear = useCallback(async () => {

@@ -18,11 +18,13 @@ import { cn } from "@/lib/utils";
 import { can, creatableRoles } from "@/lib/permissions";
 import { StudentImportDialog } from "@/components/StudentImportDialog";
 
-const roleMeta: Record<Role, { label: string; icon: any; cls: string }> = {
+const roleMeta: Record<string, { label: string; icon: any; cls: string }> = {
   super_admin: { label: "Super Admin", icon: Shield, cls: "bg-accent/15 text-accent border-accent/30" },
   staff: { label: "Staff", icon: Briefcase, cls: "bg-primary/10 text-primary border-primary/30" },
   student: { label: "Student", icon: GraduationCap, cls: "bg-muted text-muted-foreground border-border" },
 };
+
+const NO_ROLE_META = { label: "No Role", icon: Shield, cls: "bg-amber-500/10 text-amber-500 border-amber-500/30" };
 
 const Users = () => {
   const { user, users, adminCreateUser, adminResetPassword, deleteUser, updateUserRole } = useAuth();
@@ -37,7 +39,7 @@ const Users = () => {
   const [password, setPassword] = useState("");
   const [studentClass, setStudentClass] = useState("");
   const [rollNo, setRollNo] = useState("");
-  const [role, setRole] = useState<Role>(allowedRoles[0] ?? "student");
+  const [role, setRole] = useState<Role>(allowedRoles[0] ?? "student" as Role);
   const [filter, setFilter] = useState<Role | "all">("all");
 
   if (!can(user?.role, "viewUsers")) {
@@ -73,7 +75,7 @@ const Users = () => {
     }
     toast.success("User created", { description: `${res.user?.name} · ID ${res.user?.id}` });
     setName(""); setEmail(""); setPassword(""); setStudentClass(""); setRollNo("");
-    setRole(allowedRoles[0] ?? "student");
+    setRole(allowedRoles[0] ?? "student" as Role);
     setOpen(false);
   };
 
@@ -112,11 +114,11 @@ const Users = () => {
               </div>
               <div>
                 <Label>Role</Label>
-                <Select value={role} onValueChange={(v) => setRole(v as Role)} disabled={allowedRoles.length === 1}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={role || undefined} onValueChange={(v) => setRole(v as Role)} disabled={allowedRoles.length === 1}>
+                  <SelectTrigger><SelectValue placeholder="Select a role…" /></SelectTrigger>
                   <SelectContent>
                     {allowedRoles.map(r => (
-                      <SelectItem key={r} value={r}>{roleMeta[r].label}</SelectItem>
+                      <SelectItem key={r} value={r}>{(roleMeta[r] ?? NO_ROLE_META).label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -158,7 +160,7 @@ const Users = () => {
                 : "bg-card text-muted-foreground border-border hover:text-foreground"
             )}
           >
-            {k === "all" ? "All" : roleMeta[k].label} · {counts[k]}
+            {k === "all" ? "All" : (roleMeta[k]?.label ?? k)} · {counts[k]}
           </button>
         ))}
       </div>
@@ -177,9 +179,9 @@ const Users = () => {
           </TableHeader>
           <TableBody>
             {visible.map(u => {
-              const meta = roleMeta[u.role];
+              const meta = u.role ? (roleMeta[u.role] ?? NO_ROLE_META) : NO_ROLE_META;
               const Icon = meta.icon;
-              const isSelf = u.id === user!.id;
+              const isSelf = !!user && u.id === user.id;
               const canDelete = !isSelf && (isAdmin || (isStaff && u.role === "student"));
               return (
                 <TableRow key={u.id}>
@@ -207,15 +209,15 @@ const Users = () => {
                       {isAdmin && (
                         <>
                           <Select
-                            value={u.role}
+                            value={u.role || undefined}
                             onValueChange={async (v) => {
                               const res = await updateUserRole(u.id, v as Role);
                               if (!res.ok) toast.error(res.error ?? "Failed");
-                              else toast.success(`Role updated to ${roleMeta[v as Role].label}`);
+                              else toast.success(`Role updated to ${(roleMeta[v as Role] ?? NO_ROLE_META).label}`);
                             }}
                             disabled={isSelf}
                           >
-                            <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue placeholder="Select role…" /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="student">Student</SelectItem>
                               <SelectItem value="staff">Staff</SelectItem>

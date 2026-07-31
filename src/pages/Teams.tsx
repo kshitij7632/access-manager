@@ -42,7 +42,7 @@ const Teams = () => {
         {tlb.map((row, idx) => {
           const team = row.team;
           const members = row.members;
-          const captain = getStudent(team.captainId);
+          const captain = team.captainId ? getStudent(team.captainId) : null;
           const prevRank = prevTlb?.find(t => t.team.id === team.id)?.rank;
           const prevAvg = prevTlb?.find(t => t.team.id === team.id)?.avg ?? row.avg;
           const movement = prevRank ? prevRank - row.rank : 0;
@@ -51,7 +51,7 @@ const Teams = () => {
           const onFire = movement >= 2 || (row.rank === 1 && delta >= 0);
 
           const captainScore =
-            row.topPerformer?.m.id === captain.id ? row.topPerformer.marks : Math.round(row.avg);
+            (captain && row.topPerformer?.m.id === captain.id) ? row.topPerformer.marks : Math.round(row.avg);
 
           return (
             <div
@@ -122,7 +122,7 @@ const Teams = () => {
                 <div className="mt-5 flex flex-wrap gap-2">
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/60 border border-border text-xs">
                     <Crown className="size-3 text-accent" /> Captain ·{" "}
-                    <span className="font-semibold">{captain.name}</span>
+                    <span className="font-semibold">{captain?.name ?? "None"}</span>
                   </div>
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background/60 border border-border text-xs">
                     <Sparkles className="size-3 text-accent" /> Top ·{" "}

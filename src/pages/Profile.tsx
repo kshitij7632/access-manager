@@ -15,6 +15,8 @@ const roleMeta = {
   student:     { label: "Student",     icon: GraduationCap, cls: "bg-muted text-muted-foreground border-border" },
 } as const;
 
+const NO_ROLE_META = { label: "No Role", icon: Shield, cls: "bg-amber-500/10 text-amber-500 border-amber-500/30" } as const;
+
 const Profile = () => {
   const { user, updateProfile, changePassword } = useAuth();
 
@@ -28,7 +30,7 @@ const Profile = () => {
   const [savingPw, setSavingPw] = useState(false);
 
   if (!user) return null;
-  const meta = roleMeta[user.role];
+  const meta = user.role ? roleMeta[user.role] : NO_ROLE_META;
   const Icon = meta.icon;
 
   const handleProfile = async (e: React.FormEvent) => {
@@ -51,7 +53,7 @@ const Profile = () => {
     toast.success("Password changed");
   };
 
-  const initials = user.name.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase();
+  const initials = (user?.name || user?.email || "U").trim().split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <div className="p-6 md:p-8 space-y-8 max-w-4xl">
