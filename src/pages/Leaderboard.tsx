@@ -145,54 +145,97 @@ const Leaderboard = () => {
             </div>
           </div>
 
-          {/* Remaining teams */}
+          {/* Remaining teams (Desktop: Table/Grid, Mobile: Cards) */}
           {restTeams.length > 0 && (
-            <div className="space-y-3">
-              {restTeams.map((row, i) => {
-                const { icon: Icon, cls } = rankBadge(row.rank);
-                const prev = prevTlb?.find(t => t.team.id === row.team.id);
-                const delta = prev ? prev.rank - row.rank : undefined;
-                const gap = leaderTeamAvg - row.avg;
-                return (
-                  <div
-                    key={row.team.id}
-                    className="grid grid-cols-[auto,1fr,auto] md:grid-cols-[auto,2fr,1.4fr,1fr,auto] items-center gap-4 p-5 rounded-2xl border border-border bg-gradient-card transition-smooth hover:-translate-y-0.5 hover:border-primary/40 animate-fade-up"
-                    style={{ animationDelay: `${i * 50}ms` }}
-                  >
-                    <div className={cn("size-12 rounded-xl grid place-items-center font-display text-xl", cls)}>
-                      {row.rank <= 3 ? <Icon className="size-5" /> : `#${row.rank}`}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <div className="font-display text-2xl truncate">{row.team.name}</div>
-                        <Movement delta={delta} />
+            <>
+              {/* Desktop view (hidden md:block) */}
+              <div className="hidden md:block space-y-3">
+                {restTeams.map((row, i) => {
+                  const { icon: Icon, cls } = rankBadge(row.rank);
+                  const prev = prevTlb?.find(t => t.team.id === row.team.id);
+                  const delta = prev ? prev.rank - row.rank : undefined;
+                  const gap = leaderTeamAvg - row.avg;
+                  return (
+                    <div
+                      key={row.team.id}
+                      className="grid grid-cols-[auto,2fr,1.4fr,1fr,auto] items-center gap-4 p-5 rounded-2xl border border-border bg-gradient-card transition-smooth hover:-translate-y-0.5 hover:border-primary/40 animate-fade-up"
+                      style={{ animationDelay: `${i * 50}ms` }}
+                    >
+                      <div className={cn("size-12 rounded-xl grid place-items-center font-display text-xl", cls)}>
+                        {row.rank <= 3 ? <Icon className="size-5" /> : `#${row.rank}`}
                       </div>
-                      <div className="text-xs text-muted-foreground italic truncate">"{row.team.motto}"</div>
-                    </div>
-                    <div className="hidden md:block text-xs">
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Behind leader</div>
-                      <div className="inline-flex items-center gap-1 text-foreground font-mono-stat">
-                        <Target className="size-3 text-primary-glow" /> {gap.toFixed(1)} pts
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="font-display text-2xl truncate">{row.team.name}</div>
+                          <Movement delta={delta} />
+                        </div>
+                        <div className="text-xs text-muted-foreground italic truncate">"{row.team.motto}"</div>
+                      </div>
+                      <div className="text-xs">
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Behind leader</div>
+                        <div className="inline-flex items-center gap-1 text-foreground font-mono-stat">
+                          <Target className="size-3 text-primary-glow" /> {gap.toFixed(1)} pts
+                        </div>
+                      </div>
+                      <div className="text-sm text-muted-foreground truncate">
+                        <div className="text-[10px] uppercase tracking-widest">Top</div>
+                        <div className="text-foreground truncate">{row.topPerformer?.m.name}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Avg</div>
+                        <div className="font-mono-stat text-3xl text-accent">{row.avg.toFixed(1)}</div>
                       </div>
                     </div>
-                    <div className="hidden md:block text-sm text-muted-foreground truncate">
-                      <div className="text-[10px] uppercase tracking-widest">Top</div>
-                      <div className="text-foreground truncate">{row.topPerformer?.m.name}</div>
+                  );
+                })}
+              </div>
+
+              {/* Mobile view (md:hidden) */}
+              <div className="space-y-3 md:hidden">
+                {restTeams.map((row, i) => {
+                  const { icon: Icon, cls } = rankBadge(row.rank);
+                  const prev = prevTlb?.find(t => t.team.id === row.team.id);
+                  const delta = prev ? prev.rank - row.rank : undefined;
+                  const gap = leaderTeamAvg - row.avg;
+                  return (
+                    <div
+                      key={row.team.id}
+                      className="rounded-2xl border border-border bg-gradient-card p-4 space-y-3 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={cn("size-10 rounded-xl grid place-items-center font-display text-lg shrink-0", cls)}>
+                            {row.rank <= 3 ? <Icon className="size-5" /> : `#${row.rank}`}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-display text-2xl truncate flex items-center gap-2">
+                              {row.team.name}
+                              <Movement delta={delta} />
+                            </div>
+                            <div className="text-xs text-muted-foreground italic truncate">"{row.team.motto}"</div>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Avg</div>
+                          <div className="font-mono-stat text-3xl text-accent">{row.avg.toFixed(1)}</div>
+                        </div>
+                      </div>
+                      <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Top: <strong className="text-foreground">{row.topPerformer?.m.name}</strong></span>
+                        <span>−{gap.toFixed(1)} pts</span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Avg</div>
-                      <div className="font-mono-stat text-3xl text-accent">{row.avg.toFixed(1)}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </TabsContent>
 
         <TabsContent value="individuals" className="mt-6">
-          <div className="rounded-2xl border border-border bg-gradient-card overflow-hidden">
-            <div className="hidden md:grid grid-cols-[60px,2fr,1.5fr,1fr,1fr,auto] gap-4 px-6 py-3 text-[10px] uppercase tracking-widest text-muted-foreground font-bold border-b border-border bg-background/40">
+          {/* Desktop Table View (hidden md:block) */}
+          <div className="hidden md:block rounded-2xl border border-border bg-gradient-card overflow-hidden">
+            <div className="grid grid-cols-[60px,2fr,1.5fr,1fr,1fr,auto] gap-4 px-6 py-3 text-[10px] uppercase tracking-widest text-muted-foreground font-bold border-b border-border bg-background/40">
               <div>Rank</div>
               <div>Student</div>
               <div>Team</div>
@@ -210,7 +253,7 @@ const Leaderboard = () => {
                 <div
                   key={row.student.id}
                   className={cn(
-                    "grid grid-cols-[40px,1fr,auto] md:grid-cols-[60px,2fr,1.5fr,1fr,1fr,auto] items-center gap-4 px-6 py-4 border-b border-border/50 last:border-0 transition-smooth hover:bg-secondary/40 animate-fade-up",
+                    "grid grid-cols-[60px,2fr,1.5fr,1fr,1fr,auto] items-center gap-4 px-6 py-4 border-b border-border/50 last:border-0 transition-smooth hover:bg-secondary/40 animate-fade-up",
                     row.rank === 1 && "bg-accent/5"
                   )}
                   style={{ animationDelay: `${Math.min(i, 20) * 30}ms` }}
@@ -228,12 +271,11 @@ const Leaderboard = () => {
                         {onFire && <Flame className="size-3.5 text-accent" />}
                         <Movement delta={delta} />
                       </div>
-                      <div className="text-xs text-muted-foreground md:hidden">{row.team.name}</div>
                     </div>
                   </div>
-                  <div className="hidden md:block text-sm">{row.team.name}</div>
-                  <div className="hidden md:block text-sm text-muted-foreground">{row.student.branch}</div>
-                  <div className="hidden md:block text-sm">
+                  <div className="text-sm">{row.team.name}</div>
+                  <div className="text-sm text-muted-foreground">{row.student.branch}</div>
+                  <div className="text-sm">
                     {row.rank === 1 ? (
                       <span className="text-accent font-bold uppercase text-[10px] tracking-widest">Leader</span>
                     ) : (
@@ -244,6 +286,70 @@ const Leaderboard = () => {
                     <span className="font-mono-stat text-2xl text-accent">{row.marks}</span>
                     <span className="text-muted-foreground text-sm ml-1">/{exam?.totalMarks ?? 100}</span>
                   </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Mobile Individual Cards (md:hidden) */}
+          <div className="space-y-3 md:hidden">
+            {ilb.map((row, i) => {
+              const { icon: Icon, cls } = rankBadge(row.rank);
+              const prev = prevIlb?.find(r => r.student.id === row.student.id);
+              const delta = prev ? prev.rank - row.rank : undefined;
+              const gap = leaderIndvMarks - row.marks;
+              const onFire = (delta ?? 0) >= 3;
+              return (
+                <div
+                  key={row.student.id}
+                  className={cn(
+                    "rounded-2xl border bg-card p-4 space-y-3 shadow-sm transition-smooth",
+                    row.rank === 1 ? "border-accent/50 bg-accent/5 shadow-gold" : "border-border"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={cn("size-10 rounded-xl grid place-items-center font-mono-stat font-bold text-base shrink-0", cls)}>
+                        {row.rank <= 3 ? <Icon className="size-5" /> : `#${row.rank}`}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-base flex items-center gap-1.5 truncate">
+                          {row.student.name}
+                          {onFire && <Flame className="size-4 text-accent shrink-0" />}
+                          <Movement delta={delta} />
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span
+                            className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md"
+                            style={{ background: `hsl(${row.team.color} / 0.15)`, color: `hsl(${row.team.color})` }}
+                          >
+                            {row.team.name}
+                          </span>
+                          {row.student.branch && (
+                            <span className="text-xs text-muted-foreground font-medium">
+                              {row.student.branch}
+                            </span>
+                          )}
+                          {(row.student.studentClass || row.student.rollNo) && (
+                            <span className="text-xs text-muted-foreground font-medium">
+                              {row.student.studentClass && `Class ${row.student.studentClass}`}
+                              {row.student.rollNo && ` · #${row.student.rollNo}`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-mono-stat text-3xl text-accent font-bold">{row.marks}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">/{exam?.totalMarks ?? 100}</div>
+                    </div>
+                  </div>
+                  {row.rank > 1 && (
+                    <div className="pt-2 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Behind leader</span>
+                      <span className="font-mono-stat text-foreground">−{gap} pts</span>
+                    </div>
+                  )}
                 </div>
               );
             })}

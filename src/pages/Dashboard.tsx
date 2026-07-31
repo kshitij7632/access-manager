@@ -100,24 +100,24 @@ const Dashboard = () => {
         </div>
 
         {/* Hero podium */}
-        <section className="mt-10 grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 rounded-3xl bg-gradient-hero border border-primary/30 p-8 relative overflow-hidden shadow-elegant">
+        <section className="mt-8 md:mt-10 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 rounded-3xl bg-gradient-hero border border-primary/30 p-5 sm:p-8 relative overflow-hidden shadow-elegant">
             <div className="absolute inset-0 bg-gradient-podium pointer-events-none" />
             <div className="relative">
               <div className="text-xs uppercase tracking-[0.3em] text-accent font-bold mb-2">Team Podium · {latestExam.name}</div>
-              <h2 className="font-display text-4xl md:text-5xl mb-8">Who Owned The Arena</h2>
+              <h2 className="font-display text-3xl sm:text-4xl md:text-5xl mb-6">Who Owned The Arena</h2>
 
-              <div className="grid grid-cols-3 gap-4 items-end">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 items-end">
                 {[podium[1], podium[0], podium[2]].map((row, idx) => {
-                  const heights = ["h-32", "h-44", "h-24"];
+                  const heights = ["h-28 sm:h-32", "h-36 sm:h-44", "h-20 sm:h-24"];
                   const medals = ["🥈", "🥇", "🥉"];
                   const order = [1, 0, 2][idx];
                   return (
                     <div key={row.team.id} className="flex flex-col items-center text-center">
-                      <div className="text-3xl mb-2">{medals[idx]}</div>
-                      <div className="font-display text-xl">{row.team.name}</div>
-                      <div className="font-mono-stat text-3xl text-accent mt-1">{row.avg.toFixed(1)}</div>
-                      <div className={`${heights[idx]} w-full mt-3 rounded-t-2xl border-t-4 ${order === 0 ? "border-accent bg-accent/15" : "border-primary-glow bg-primary/30"}`} />
+                      <div className="text-2xl sm:text-3xl mb-1">{medals[idx]}</div>
+                      <div className="font-display text-xs sm:text-xl truncate max-w-full">{row.team.name}</div>
+                      <div className="font-mono-stat text-lg sm:text-3xl text-accent mt-0.5 sm:mt-1">{row.avg.toFixed(1)}</div>
+                      <div className={`${heights[idx]} w-full mt-2 sm:mt-3 rounded-t-2xl border-t-4 ${order === 0 ? "border-accent bg-accent/15" : "border-primary-glow bg-primary/30"}`} />
                     </div>
                   );
                 })}
@@ -126,18 +126,18 @@ const Dashboard = () => {
           </div>
 
           {/* Topper card */}
-          <div className="rounded-3xl border border-accent/40 bg-gradient-card p-8 shadow-gold relative overflow-hidden">
+          <div className="rounded-3xl border border-accent/40 bg-gradient-card p-5 sm:p-8 shadow-gold relative overflow-hidden">
             <div className="absolute -top-10 -right-10 size-40 rounded-full bg-accent/20 blur-3xl" />
             <div className="text-xs uppercase tracking-[0.3em] text-accent font-bold mb-2 flex items-center gap-2">
               <Flame className="size-4" /> Topper of the day
             </div>
-            <div className="size-20 rounded-2xl bg-gradient-gold grid place-items-center font-display text-3xl text-accent-foreground mt-4 shadow-gold">
+            <div className="size-16 sm:size-20 rounded-2xl bg-gradient-gold grid place-items-center font-display text-2xl sm:text-3xl text-accent-foreground mt-4 shadow-gold">
               {topper.student.avatar}
             </div>
-            <div className="mt-4 font-display text-3xl">{topper.student.name}</div>
-            <div className="text-sm text-muted-foreground">{topper.team.name} · {topper.student.branch}</div>
-            <div className="mt-6 flex items-baseline gap-2">
-              <span className="font-mono-stat text-6xl text-accent">{topper.marks}</span>
+            <div className="mt-4 font-display text-2xl sm:text-3xl truncate">{topper.student.name}</div>
+            <div className="text-sm text-muted-foreground truncate">{topper.team.name} · {topper.student.branch}</div>
+            <div className="mt-5 flex items-baseline gap-2">
+              <span className="font-mono-stat text-4xl sm:text-6xl text-accent">{topper.marks}</span>
               <span className="text-muted-foreground">/ {latestExam.totalMarks}</span>
             </div>
             <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/15 text-accent text-xs font-bold tracking-wider uppercase">
@@ -147,7 +147,7 @@ const Dashboard = () => {
         </section>
 
         {/* Engagement: momentum & captain & winner */}
-        <section className="mt-10 grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <section className="mt-8 md:mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Team Momentum / Biggest climber */}
           <div className="group rounded-2xl border border-primary/30 bg-gradient-card p-6 relative overflow-hidden transition-smooth hover:-translate-y-0.5 hover:shadow-elegant">
             <div
