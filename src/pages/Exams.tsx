@@ -20,7 +20,7 @@ const Exams = () => {
         action={canEdit ? <NewExamDialog /> : undefined}
       />
 
-      <div className="grid md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
         {exams.map(exam => {
           const examMarks = marks.filter(m => m.examId === exam.id);
           const avg = examMarks.reduce((a, b) => a + b.marks, 0) / Math.max(examMarks.length, 1);

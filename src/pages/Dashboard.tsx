@@ -92,7 +92,7 @@ const Dashboard = () => {
         />
 
         {/* Stat row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard label="Students" value={students.length} icon={Users} sub="Across 4 teams" />
           <StatCard label="Exams Held" value={exams.length} icon={FileText} sub={`Latest · ${latestExam.subject}`} />
           <StatCard label="Winning Team" value={winner.team.name.replace("Team ", "")} icon={Trophy} variant="gold" sub={`Avg ${winner.avg.toFixed(1)} pts`} />

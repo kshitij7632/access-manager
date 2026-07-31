@@ -280,7 +280,7 @@ const TeamBuilder = () => {
       </div>
 
       {/* Filter bar */}
-      <div className="rounded-2xl border border-border bg-gradient-card p-4 md:p-5 mb-6 grid gap-4 md:grid-cols-[1fr,1fr,2fr,auto] items-end">
+      <div className="rounded-2xl border border-border bg-gradient-card p-4 md:p-5 mb-6 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr,1fr,2fr,auto] items-end">
         <div>
           <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Standard</Label>
           <Select value={standard || undefined} onValueChange={setStandard}>
@@ -323,7 +323,7 @@ const TeamBuilder = () => {
               key={t.id}
               onClick={() => setActiveTeamId(t.id)}
               className={cn(
-                "group inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-smooth border",
+                "group inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold transition-smooth border min-h-[44px]",
                 active
                   ? "text-primary-foreground border-transparent shadow-elegant"
                   : "bg-card text-foreground/80 border-border hover:bg-secondary",
@@ -348,7 +348,7 @@ const TeamBuilder = () => {
             </button>
           );
         })}
-        <Button variant="outline" size="sm" onClick={addTeam} className="rounded-full">
+        <Button variant="outline" size="sm" onClick={addTeam} className="rounded-full min-h-[44px] px-4">
           <Plus className="size-4 mr-1" /> New Team
         </Button>
       </div>

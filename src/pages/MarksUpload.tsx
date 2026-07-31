@@ -197,21 +197,22 @@ const MarksUpload = () => {
               className="mt-2 font-mono text-sm"
               maxLength={5000}
             />
-            <div className="flex flex-wrap gap-2 mt-3">
-              <Button variant="secondary" size="sm" onClick={handlePasteParse}>
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mt-3">
+              <Button variant="secondary" size="sm" onClick={handlePasteParse} className="h-11 justify-center">
                 <ClipboardPaste className="size-4 mr-1" /> Parse
               </Button>
-              <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+              <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} className="h-11 justify-center">
                 <Upload className="size-4 mr-1" /> CSV
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
+                className="h-11 justify-center"
                 onClick={() => downloadCSV("marks-template.csv", "studentId,name,marks\ns1,Aarav Sharma,87\ns2,Diya Patel,92\n")}
               >
                 <Download className="size-4 mr-1" /> Template
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleClear}>
+              <Button variant="ghost" size="sm" onClick={handleClear} className="h-11 justify-center">
                 <Eraser className="size-4 mr-1" /> Clear
               </Button>
               <input
@@ -224,7 +225,7 @@ const MarksUpload = () => {
             </div>
           </div>
 
-          <Button onClick={handleSave} size="lg" className="w-full bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold font-bold">
+          <Button onClick={handleSave} size="lg" className="w-full bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold font-bold h-12 text-base">
             <Save className="size-4 mr-1" /> Save & Process Results
           </Button>
         </div>
@@ -238,10 +239,10 @@ const MarksUpload = () => {
             </div>
             <div className="text-xs text-muted-foreground">Out of <span className="text-accent font-bold">{selectedExam?.totalMarks ?? 0}</span></div>
           </div>
-          <div className="grid sm:grid-cols-2 gap-2 max-h-[520px] overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[520px] overflow-y-auto pr-1">
             {students.map(s => {
               const team = getTeam(s.teamId);
-              const row = rows.find(r => r.studentId === s.id)!;
+              const row = rows.find(r => r.studentId === s.id);
               return (
                 <div key={s.id} className="flex items-center gap-3 p-2 rounded-lg border border-border/60 hover:border-accent/40 transition-smooth">
                   <div className="size-9 rounded-lg bg-secondary grid place-items-center text-xs font-bold shrink-0">{s.avatar}</div>
@@ -254,7 +255,7 @@ const MarksUpload = () => {
                     inputMode="numeric"
                     min={0}
                     max={selectedExam?.totalMarks ?? 100}
-                    value={row.value}
+                    value={row?.value ?? ""}
                     onChange={e => updateRow(s.id, e.target.value)}
                     className="w-20 text-right font-mono"
                     placeholder="—"

@@ -76,16 +76,16 @@ const Login = () => {
             <p className="text-muted-foreground text-sm mt-2">Use the email and password issued to you.</p>
           </div>
 
-          <form onSubmit={handleSignIn} className="space-y-3">
+          <form onSubmit={handleSignIn} className="space-y-4">
             <div>
-              <Label htmlFor="si-email">Email</Label>
-              <Input id="si-email" type="email" value={siEmail} onChange={e => setSiEmail(e.target.value)} placeholder="firstname.lastname@lakshyaprivatetuitions.com" required maxLength={120} />
+              <Label htmlFor="si-email" className="text-xs font-semibold">Email</Label>
+              <Input id="si-email" type="email" value={siEmail} onChange={e => setSiEmail(e.target.value)} placeholder="name@lakshya.com" required maxLength={120} className="h-12 text-base mt-1" />
             </div>
             <div>
-              <Label htmlFor="si-password">Password</Label>
-              <Input id="si-password" type="password" value={siPassword} onChange={e => setSiPassword(e.target.value)} placeholder="••••••••" required maxLength={60} />
+              <Label htmlFor="si-password" className="text-xs font-semibold">Password</Label>
+              <Input id="si-password" type="password" value={siPassword} onChange={e => setSiPassword(e.target.value)} placeholder="••••••••" required maxLength={60} className="h-12 text-base mt-1" />
             </div>
-            <Button type="submit" size="lg" className="w-full bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold font-bold">
+            <Button type="submit" size="lg" className="w-full bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold font-bold h-12 text-base mt-2">
               Sign in
             </Button>
           </form>

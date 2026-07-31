@@ -68,7 +68,8 @@ const AuditLog = () => {
         />
       </div>
 
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      {/* Desktop Table */}
+      <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -118,6 +119,44 @@ const AuditLog = () => {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile Cards (md:hidden) */}
+      <div className="space-y-3 md:hidden">
+        {filtered.map(e => (
+          <div key={e.id} className="rounded-2xl border border-border bg-card p-4 space-y-2 text-sm shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                {ACTION_LABEL[e.action] ?? e.action}
+              </Badge>
+              <div className="text-[11px] text-muted-foreground font-mono">
+                {new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            </div>
+            <div className="flex justify-between items-baseline gap-2">
+              <div>
+                <span className="text-xs text-muted-foreground">Actor: </span>
+                <span className="font-semibold">{e.actorName ?? "system"}</span>
+                {e.actorRole && <span className="text-[10px] text-accent uppercase font-bold ml-1.5">({e.actorRole})</span>}
+              </div>
+            </div>
+            {e.targetLabel && (
+              <div className="text-xs text-muted-foreground">
+                Target: <span className="text-foreground font-medium">{e.targetLabel}</span>
+              </div>
+            )}
+            {e.detail && (
+              <div className="text-xs text-muted-foreground pt-1 border-t border-border/50">
+                {e.detail}
+              </div>
+            )}
+          </div>
+        ))}
+        {filtered.length === 0 && (
+          <div className="p-8 text-center text-muted-foreground bg-card rounded-2xl border border-border">
+            {entries.length === 0 ? "No activity logged yet." : "No entries match your search."}
+          </div>
+        )}
       </div>
     </div>
   );

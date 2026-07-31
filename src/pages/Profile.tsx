@@ -86,15 +86,15 @@ const Profile = () => {
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="pf-name">Full name</Label>
-            <Input id="pf-name" value={name} onChange={e => setName(e.target.value)} maxLength={60} />
+            <Label htmlFor="pf-name" className="text-xs font-semibold">Full name</Label>
+            <Input id="pf-name" value={name} onChange={e => setName(e.target.value)} maxLength={60} className="h-11 text-base mt-1" />
           </div>
           <div>
-            <Label htmlFor="pf-email">Email</Label>
-            <Input id="pf-email" type="email" value={email} onChange={e => setEmail(e.target.value)} maxLength={120} />
+            <Label htmlFor="pf-email" className="text-xs font-semibold">Email</Label>
+            <Input id="pf-email" type="email" value={email} onChange={e => setEmail(e.target.value)} maxLength={120} className="h-11 text-base mt-1" />
           </div>
         </div>
-        <Button type="submit" disabled={savingProfile} className="bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold font-bold">
+        <Button type="submit" disabled={savingProfile} className="bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold font-bold h-11 w-full sm:w-auto px-6">
           <Save className="size-4 mr-2" /> Save changes
         </Button>
       </form>
@@ -107,19 +107,19 @@ const Profile = () => {
         </div>
         <div className="grid sm:grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="pf-current">Current password</Label>
-            <Input id="pf-current" type="password" value={current} onChange={e => setCurrent(e.target.value)} required maxLength={60} />
+            <Label htmlFor="pf-current" className="text-xs font-semibold">Current password</Label>
+            <Input id="pf-current" type="password" value={current} onChange={e => setCurrent(e.target.value)} required maxLength={60} className="h-11 text-base mt-1" />
           </div>
           <div>
-            <Label htmlFor="pf-next">New password</Label>
-            <Input id="pf-next" type="password" value={next} onChange={e => setNext(e.target.value)} required minLength={6} maxLength={60} />
+            <Label htmlFor="pf-next" className="text-xs font-semibold">New password</Label>
+            <Input id="pf-next" type="password" value={next} onChange={e => setNext(e.target.value)} required minLength={6} maxLength={60} className="h-11 text-base mt-1" />
           </div>
           <div>
-            <Label htmlFor="pf-confirm">Confirm new</Label>
-            <Input id="pf-confirm" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required minLength={6} maxLength={60} />
+            <Label htmlFor="pf-confirm" className="text-xs font-semibold">Confirm new</Label>
+            <Input id="pf-confirm" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required minLength={6} maxLength={60} className="h-11 text-base mt-1" />
           </div>
         </div>
-        <Button type="submit" disabled={savingPw} variant="secondary">
+        <Button type="submit" disabled={savingPw} variant="secondary" className="h-11 w-full sm:w-auto px-6 font-semibold">
           <KeyRound className="size-4 mr-2" /> Update password
         </Button>
       </form>

@@ -138,7 +138,7 @@ const Students = () => {
                 <div className="size-10 rounded-xl bg-gradient-primary text-primary-foreground grid place-items-center font-bold text-sm flex-shrink-0">{s.avatar}</div>
                 <div className="min-w-0">
                   <div className="font-semibold truncate">{s.name}</div>
-                  <div className="text-xs text-muted-foreground md:hidden">{team.name} · Rank #{rank}</div>
+                  <div className="text-xs text-muted-foreground md:hidden truncate">{team.name} · {s.branch} · Rank #{rank}</div>
                 </div>
               </div>
               <div className="hidden md:block text-sm">{team.name}</div>

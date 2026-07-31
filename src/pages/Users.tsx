@@ -165,8 +165,8 @@ const Users = () => {
         ))}
       </div>
 
-      {/* Table */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      {/* Desktop Table */}
+      <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -300,6 +300,130 @@ const Users = () => {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile Cards (md:hidden) */}
+      <div className="space-y-4 md:hidden">
+        {visible.map(u => {
+          const meta = u.role ? (roleMeta[u.role] ?? NO_ROLE_META) : NO_ROLE_META;
+          const Icon = meta.icon;
+          const isSelf = !!user && u.id === user.id;
+          const canDelete = !isSelf && (isAdmin || (isStaff && u.role === "student"));
+          return (
+            <div key={u.id} className="rounded-2xl border border-border bg-card p-5 space-y-3 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-bold text-base flex items-center gap-1.5 flex-wrap">
+                    {u.name} {isSelf && <span className="text-xs text-accent font-normal">(you)</span>}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate mt-0.5">{u.email}</div>
+                </div>
+                <Badge variant="outline" className={cn("gap-1 shrink-0", meta.cls)}>
+                  <Icon className="size-3" /> {meta.label}
+                </Badge>
+              </div>
+
+              {u.role === "student" && (u.studentClass || u.rollNo) && (
+                <div className="text-xs text-muted-foreground bg-secondary/40 px-3 py-1.5 rounded-lg flex items-center gap-3">
+                  {u.studentClass && <span>Class: <strong>{u.studentClass}</strong></span>}
+                  {u.rollNo && <span>Roll #: <strong>{u.rollNo}</strong></span>}
+                </div>
+              )}
+
+              <div className="text-[11px] font-mono text-muted-foreground truncate">
+                ID: {u.id}
+              </div>
+
+              <div className="pt-2 border-t border-border/60 flex flex-wrap items-center gap-2">
+                {isAdmin && (
+                  <>
+                    <Select
+                      value={u.role || undefined}
+                      onValueChange={async (v) => {
+                        const res = await updateUserRole(u.id, v as Role);
+                        if (!res.ok) toast.error(res.error ?? "Failed");
+                        else toast.success(`Role updated to ${(roleMeta[v as Role] ?? NO_ROLE_META).label}`);
+                      }}
+                      disabled={isSelf}
+                    >
+                      <SelectTrigger className="h-11 flex-1 text-xs"><SelectValue placeholder="Role…" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="student">Student</SelectItem>
+                        <SelectItem value="staff">Staff</SelectItem>
+                        <SelectItem value="super_admin">Super Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-11 text-xs font-semibold gap-1.5 border-amber-500/30 text-amber-500 hover:bg-amber-500/10">
+                          <KeyRound className="size-4" /> Reset
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Reset password for {u.name}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will reset {u.name}'s password to <strong className="font-mono text-foreground">student123</strong>. The user will be required to change their password on their next login.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-amber-500 text-slate-950 font-bold hover:bg-amber-400"
+                            onClick={async () => {
+                              const res = await adminResetPassword(u.id);
+                              if (!res.ok) {
+                                toast.error(res.error ?? "Password reset failed");
+                              } else {
+                                toast.success(`Password reset for ${u.name}`, {
+                                  description: "Set to default password 'student123'. Must change on next login.",
+                                });
+                              }
+                            }}
+                          >
+                            Reset Password
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
+                )}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" disabled={!canDelete} className="size-11 text-destructive hover:text-destructive shrink-0">
+                      <Trash2 className="size-5" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete {u.name}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This permanently removes the account ({u.id}). This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={async () => {
+                          const res = await deleteUser(u.id);
+                          if (!res.ok) toast.error(res.error ?? "Failed");
+                          else toast.success("User deleted");
+                        }}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          );
+        })}
+        {visible.length === 0 && (
+          <div className="p-8 text-center text-muted-foreground bg-card rounded-2xl border border-border">No users in this category.</div>
+        )}
       </div>
     </div>
   );
